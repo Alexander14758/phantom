@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: prices
+    description: Crypto market prices
+  - name: wallet
+    description: Solana wallet operations
 paths:
   /healthz:
     get:
@@ -24,6 +28,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /prices:
+    get:
+      operationId: getPrices
+      tags: [prices]
+      summary: Get live crypto prices from CoinGecko
+      description: Returns current USD prices, 24h change, and logo URLs for BTC, ETH, SOL
+      responses:
+        "200":
+          description: Coin market data array
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CoinMarketData"
+        "502":
+          description: CoinGecko API error
+  /wallet/{address}:
+    get:
+      operationId: getWalletTokens
+      tags: [wallet]
+      summary: Get Solana wallet token holdings
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Solana wallet address (base58)
+      responses:
+        "200":
+          description: Wallet token holdings with prices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletResponse"
+        "400":
+          description: Invalid Solana address
+        "500":
+          description: Failed to fetch wallet data
 components:
   schemas:
     HealthStatus:
@@ -33,4 +77,74 @@ components:
           type: string
       required:
         - status
-
+    CoinMarketData:
+      type: object
+      properties:
+        id:
+          type: string
+        symbol:
+          type: string
+        name:
+          type: string
+        image:
+          type: string
+        current_price:
+          type: number
+        price_change_percentage_24h:
+          type: number
+          nullable: true
+        market_cap:
+          type: number
+      required:
+        - id
+        - symbol
+        - name
+        - image
+        - current_price
+        - price_change_percentage_24h
+    WalletToken:
+      type: object
+      properties:
+        mint:
+          type: string
+        symbol:
+          type: string
+        name:
+          type: string
+        logo:
+          type: string
+          nullable: true
+        amount:
+          type: number
+        decimals:
+          type: integer
+        usdValue:
+          type: number
+          nullable: true
+        usdPrice:
+          type: number
+          nullable: true
+        priceChange24h:
+          type: number
+          nullable: true
+      required:
+        - mint
+        - symbol
+        - name
+        - amount
+        - decimals
+    WalletResponse:
+      type: object
+      properties:
+        address:
+          type: string
+        tokens:
+          type: array
+          items:
+            $ref: "#/components/schemas/WalletToken"
+        totalUsdValue:
+          type: number
+      required:
+        - address
+        - tokens
+        - totalUsdValue

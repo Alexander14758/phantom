@@ -5,19 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface HealthStatus {
-  status: string;
-}
-
-export interface CoinMarketData {
-  id: string;
-  symbol: string;
-  name: string;
-  image: string;
-  current_price: number;
-  price_change_percentage_24h: number | null;
-  market_cap?: number;
-}
 
 export interface WalletToken {
   mint: string;
@@ -30,10 +17,3 @@ export interface WalletToken {
   usdPrice?: number | null;
   priceChange24h?: number | null;
 }
-
-export interface WalletResponse {
-  address: string;
-  tokens: WalletToken[];
-  totalUsdValue: number;
-}
-

@@ -1,7 +1,8 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  Image,
   Platform,
   Pressable,
   RefreshControl,
@@ -10,162 +11,207 @@ import {
   StyleSheet,
   Text,
   View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useColors } from '@/hooks/useColors';
-import { BarSpinner } from '@/components/BarSpinner';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-interface Token {
-  id: string;
-  name: string;
-  symbol: string;
-  amount: string;
-  value: number;
-  change: number;
-  verified: boolean;
-  bgColor: string;
-  symbolColor: string;
-}
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const INITIAL_BALANCE = 410757.53;
-
-const TOKENS: Token[] = [
-  {
-    id: '1', name: 'Solana', symbol: 'SOL', amount: '3,652.05 SOL',
-    value: 338398.95, change: 8904.03, verified: true,
-    bgColor: '#9945FF', symbolColor: '#FFFFFF',
-  },
-  {
-    id: '2', name: 'Psyopjak', symbol: 'P', amount: '100M Psyopjak',
-    value: 38620.00, change: 34813.82, verified: false,
-    bgColor: '#2A2A36', symbolColor: '#AAAACC',
-  },
-  {
-    id: '3', name: 'Bitcoin', symbol: '₿', amount: '0.3 BTC',
-    value: 21353.10, change: 228.68, verified: true,
-    bgColor: '#F7931A', symbolColor: '#FFFFFF',
-  },
-  {
-    id: '4', name: 'Ghibli', symbol: 'G', amount: '10M GHIBLI',
-    value: 2875.00, change: 1186.35, verified: false,
-    bgColor: '#1E3A1E', symbolColor: '#4CAF50',
-  },
-];
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useColors } from "@/hooks/useColors";
+import { BarSpinner } from "@/components/BarSpinner";
+import { ProfileModal } from "@/components/ProfileModal";
+import { useProfile } from "@/hooks/useProfile";
+import { usePortfolio, type PortfolioToken } from "@/hooks/usePortfolio";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatCurrency(value: number): string {
-  return '$' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (value >= 1_000_000) {
+    return "$" + (value / 1_000_000).toFixed(2) + "M";
+  }
+  return (
+    "$" +
+    value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  );
+}
+
+function formatAmount(amount: number, symbol: string): string {
+  if (amount >= 1_000_000) return (amount / 1_000_000).toFixed(2) + "M " + symbol;
+  if (amount >= 1_000) return amount.toLocaleString("en-US", { maximumFractionDigits: 2 }) + " " + symbol;
+  return amount.toLocaleString("en-US", { maximumFractionDigits: 6 }) + " " + symbol;
 }
 
 function formatChange(value: number): string {
-  const sign = value >= 0 ? '+' : '';
-  return sign + '$' + Math.abs(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const sign = value >= 0 ? "+" : "";
+  return (
+    sign +
+    "$" +
+    Math.abs(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  );
 }
 
-// Simulate fetching new wallet balance from backend
-async function fetchBalance(currentBalance: number): Promise<number> {
-  await new Promise(r => setTimeout(r, 1500));
-  const delta = (Math.random() - 0.4) * 3000;
-  return Math.max(400000, currentBalance + delta);
+function formatChangePct(pct: number): string {
+  return (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%";
 }
 
-// ─── Counting animation hook ──────────────────────────────────────────────────
+// ─── Counting Animation Hook ──────────────────────────────────────────────────
 function useCountingAnimation(target: number, duration = 800) {
   const [display, setDisplay] = useState(target);
   const prevRef = useRef(target);
   const frameRef = useRef<number | null>(null);
 
-  const animateTo = useCallback((from: number, to: number) => {
-    if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-    if (from === to) { setDisplay(to); return; }
-    let startTime: number | null = null;
-
-    const step = (ts: number) => {
-      if (!startTime) startTime = ts;
-      const elapsed = ts - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-      setDisplay(from + (to - from) * eased);
-      if (progress < 1) {
-        frameRef.current = requestAnimationFrame(step);
-      } else {
+  const animateTo = useCallback(
+    (from: number, to: number) => {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      if (from === to) {
         setDisplay(to);
-        prevRef.current = to;
+        return;
       }
-    };
-    frameRef.current = requestAnimationFrame(step);
-  }, [duration]);
+      let startTime: number | null = null;
+      const step = (ts: number) => {
+        if (!startTime) startTime = ts;
+        const elapsed = ts - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setDisplay(from + (to - from) * eased);
+        if (progress < 1) {
+          frameRef.current = requestAnimationFrame(step);
+        } else {
+          setDisplay(to);
+          prevRef.current = to;
+        }
+      };
+      frameRef.current = requestAnimationFrame(step);
+    },
+    [duration]
+  );
 
-  const update = useCallback((newTarget: number) => {
-    animateTo(prevRef.current, newTarget);
-  }, [animateTo]);
+  const update = useCallback(
+    (newTarget: number) => {
+      animateTo(prevRef.current, newTarget);
+    },
+    [animateTo]
+  );
 
   return { display, update };
 }
 
-// ─── Token Avatar ─────────────────────────────────────────────────────────────
-function TokenAvatar({ token }: { token: Token }) {
+// ─── Token Row ─────────────────────────────────────────────────────────────────
+function TokenRow({ token, isLast }: { token: PortfolioToken; isLast: boolean }) {
+  const colors = useColors();
+  const isPositive = token.change24h >= 0;
+  const changeColor = isPositive ? colors.green : colors.destructive;
+  const tokenChangeUsd = token.value - token.value / (1 + token.change24h / 100);
+
   return (
-    <View style={[styles.tokenAvatar, { backgroundColor: token.bgColor }]}>
-      <Text style={[styles.tokenAvatarText, { color: token.symbolColor }]}>
-        {token.symbol}
-      </Text>
-    </View>
+    <>
+      <Pressable style={styles.tokenRow} android_ripple={{ color: colors.border }}>
+        {/* Avatar */}
+        <View style={styles.tokenAvatarWrap}>
+          {token.image ? (
+            <Image
+              source={{ uri: token.image }}
+              style={styles.tokenAvatar}
+              resizeMode="contain"
+            />
+          ) : (
+            <View style={[styles.tokenAvatarFallback, { backgroundColor: colors.secondary }]}>
+              <Text style={[styles.tokenAvatarInitial, { color: colors.foreground }]}>
+                {token.symbol.slice(0, 2)}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Info */}
+        <View style={styles.tokenInfo}>
+          <View style={styles.tokenNameRow}>
+            <Text style={[styles.tokenName, { color: colors.foreground }]} numberOfLines={1}>
+              {token.name}
+            </Text>
+            {token.verified && (
+              <Ionicons
+                name="checkmark-circle"
+                size={13}
+                color={colors.primary}
+                style={{ marginLeft: 3 }}
+              />
+            )}
+            {token.isExternal && (
+              <View style={[styles.extBadge, { backgroundColor: colors.primary + "22" }]}>
+                <Text style={[styles.extBadgeText, { color: colors.primary }]}>wallet</Text>
+              </View>
+            )}
+          </View>
+          <Text style={[styles.tokenAmount, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {formatAmount(token.amount, token.symbol)}
+          </Text>
+        </View>
+
+        {/* Values */}
+        <View style={styles.tokenValues}>
+          <Text style={[styles.tokenValue, { color: colors.foreground }]}>
+            {token.value > 0 ? formatCurrency(token.value) : "—"}
+          </Text>
+          {token.change24h !== 0 && token.value > 0 && (
+            <Text style={[styles.tokenChange, { color: changeColor }]}>
+              {formatChange(tokenChangeUsd)}
+            </Text>
+          )}
+        </View>
+      </Pressable>
+      {!isLast && (
+        <View style={[styles.tokenDivider, { backgroundColor: colors.border }]} />
+      )}
+    </>
   );
 }
 
 // ─── Action Button ────────────────────────────────────────────────────────────
-function ActionButton({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress?: () => void }) {
+function ActionButton({
+  icon,
+  label,
+}: {
+  icon: React.ReactNode;
+  label: string;
+}) {
   const colors = useColors();
   const scale = useRef(new Animated.Value(1)).current;
 
-  const handlePressIn = () => {
-    Animated.timing(scale, { toValue: 0.93, duration: 80, useNativeDriver: true }).start();
-  };
-  const handlePressOut = () => {
-    Animated.spring(scale, { toValue: 1, useNativeDriver: true, bounciness: 4 }).start();
-    onPress?.();
-  };
+  const onPressIn = () =>
+    Animated.timing(scale, { toValue: 0.92, duration: 80, useNativeDriver: true }).start();
+  const onPressOut = () =>
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, bounciness: 5 }).start();
 
   return (
-    <Animated.View style={{ transform: [{ scale }], alignItems: 'center', flex: 1 }}>
-      <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut} style={styles.actionButtonWrap}>
-        <View style={[styles.actionButtonCircle, { backgroundColor: colors.card }]}>
-          {icon}
-        </View>
-        <Text style={[styles.actionButtonLabel, { color: colors.mutedForeground }]}>{label}</Text>
+    <Animated.View style={{ transform: [{ scale }], alignItems: "center", flex: 1 }}>
+      <Pressable onPressIn={onPressIn} onPressOut={onPressOut} style={styles.actionWrap}>
+        <View style={[styles.actionCircle, { backgroundColor: colors.card }]}>{icon}</View>
+        <Text style={[styles.actionLabel, { color: colors.mutedForeground }]}>{label}</Text>
       </Pressable>
     </Animated.View>
   );
 }
 
 // ─── Bottom Tab Bar ───────────────────────────────────────────────────────────
-function BottomTabBar({ activeTab, insetBottom }: { activeTab: number; insetBottom: number }) {
+function BottomTabBar({ bottomInset }: { bottomInset: number }) {
   const colors = useColors();
-  const tabs = [
-    { icon: 'home', lib: 'feather' },
-    { icon: 'file-text', lib: 'feather' },
-    { icon: 'repeat', lib: 'feather' },
-    { icon: 'message-square', lib: 'feather' },
-    { icon: 'user', lib: 'feather' },
-  ];
+  const ICONS = ["home", "file-text", "repeat", "message-square", "user"] as const;
 
   return (
-    <View style={[styles.bottomTabBar, {
-      backgroundColor: colors.tabBar,
-      borderTopColor: colors.tabBarBorder,
-      paddingBottom: insetBottom + 8,
-    }]}>
-      {tabs.map((tab, i) => (
-        <Pressable key={i} style={styles.tabItem}>
+    <View
+      style={[
+        styles.tabBar,
+        {
+          backgroundColor: colors.tabBar,
+          borderTopColor: colors.tabBarBorder,
+          paddingBottom: bottomInset + 8,
+        },
+      ]}
+    >
+      {ICONS.map((icon, i) => (
+        <Pressable key={icon} style={styles.tabItem} hitSlop={8}>
           <Feather
-            name={tab.icon as any}
+            name={icon}
             size={22}
-            color={i === activeTab ? colors.tabActive : colors.tabInactive}
+            color={i === 0 ? colors.tabActive : colors.tabInactive}
           />
         </Pressable>
       ))}
@@ -178,13 +224,37 @@ export default function WalletScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
-  const [balance, setBalance] = useState(INITIAL_BALANCE);
-  const [change] = useState(46373.33);
-  const [changePct] = useState(93.56);
+  const {
+    profile,
+    balances,
+    connectedWallet,
+    saveProfile,
+    saveBalances,
+    saveConnectedWallet,
+  } = useProfile();
+
+  const portfolio = usePortfolio(balances, connectedWallet?.address);
+
+  const [profileOpen, setProfileOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [spinnerVisible, setSpinnerVisible] = useState(false);
 
-  const { display: displayBalance, update: updateBalance } = useCountingAnimation(INITIAL_BALANCE);
+  const { display: displayBalance, update: updateBalance } = useCountingAnimation(0);
+
+  // Sync balance counter when portfolio value changes
+  const prevTotalRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (portfolio.totalValue > 0) {
+      if (prevTotalRef.current === null) {
+        // First load — jump directly (no animation on initial render)
+        prevTotalRef.current = portfolio.totalValue;
+        updateBalance(portfolio.totalValue);
+      } else if (prevTotalRef.current !== portfolio.totalValue) {
+        updateBalance(portfolio.totalValue);
+        prevTotalRef.current = portfolio.totalValue;
+      }
+    }
+  }, [portfolio.totalValue, updateBalance]);
 
   const handleRefresh = useCallback(async () => {
     if (isRefreshing) return;
@@ -193,27 +263,26 @@ export default function WalletScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     try {
-      const newBalance = await fetchBalance(balance);
-      // Fade spinner out, then count balance
+      await portfolio.refetch();
+    } finally {
       setSpinnerVisible(false);
-      // Short pause for fade-out, then start counter
       setTimeout(() => {
-        setBalance(newBalance);
-        updateBalance(newBalance);
         setIsRefreshing(false);
-        if (newBalance !== balance) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }, 280);
-    } catch {
-      setSpinnerVisible(false);
-      setIsRefreshing(false);
     }
-  }, [isRefreshing, balance, updateBalance]);
+  }, [isRefreshing, portfolio]);
 
-  const topPadding = Platform.OS === 'web'
-    ? Math.max(insets.top, 67)
-    : insets.top;
+  const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
+  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+
+  const totalChange24h = portfolio.totalChange24h;
+  const totalPct =
+    portfolio.totalValue > 0
+      ? (totalChange24h / (portfolio.totalValue - totalChange24h)) * 100
+      : 0;
+  const changeColor = totalChange24h >= 0 ? colors.green : colors.destructive;
+  const changeBgColor = totalChange24h >= 0 ? "#1A3A26" : "#3A1A1A";
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -221,35 +290,35 @@ export default function WalletScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
             tintColor="transparent"
-            colors={['transparent']}
+            colors={["transparent"]}
             progressBackgroundColor="transparent"
           />
         }
       >
         {/* ── Header ── */}
-        <View style={[styles.header, { paddingTop: topPadding + 12 }]}>
-          <View style={styles.headerLeft}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>S</Text>
+        <View style={[styles.header, { paddingTop: topPad + 12 }]}>
+          <Pressable style={styles.headerLeft} onPress={() => setProfileOpen(true)}>
+            <View style={[styles.avatarCircle, { backgroundColor: "#5B4AE8" }]}>
+              <Text style={styles.avatarEmoji}>{profile.avatar}</Text>
             </View>
-            <View style={styles.headerNameBlock}>
-              <Text style={[styles.headerHandle, { color: colors.mutedForeground }]}>@shai.crypto</Text>
-              <Text style={[styles.headerName, { color: colors.foreground }]}>Shai</Text>
+            <View>
+              <Text style={[styles.headerHandle, { color: colors.mutedForeground }]}>
+                {profile.username}
+              </Text>
+              <Text style={[styles.headerName, { color: colors.foreground }]}>
+                {profile.name}
+              </Text>
             </View>
-          </View>
+          </Pressable>
           <View style={styles.headerRight}>
-            <Pressable
-              style={styles.headerIconBtn}
-              onPress={handleRefresh}
-              hitSlop={8}
-            >
+            <Pressable style={styles.headerIconBtn} onPress={handleRefresh} hitSlop={8}>
               <Feather name="clock" size={22} color={colors.foreground} />
             </Pressable>
             <Pressable style={styles.headerIconBtn} hitSlop={8}>
@@ -260,45 +329,50 @@ export default function WalletScreen() {
 
         {/* ── Balance Section ── */}
         <View style={styles.balanceSection}>
-          {/* Spinner row — always occupies space, just invisible when not loading */}
           <View style={styles.spinnerRow}>
-            <BarSpinner size={30} color="#FFFFFF" visible={spinnerVisible} />
+            <BarSpinner size={28} color="#FFFFFF" visible={spinnerVisible} />
           </View>
 
-          {/* Balance */}
           <Text style={[styles.balanceText, { color: colors.foreground }]}>
             {formatCurrency(displayBalance)}
           </Text>
 
-          {/* Change row */}
-          <View style={styles.changeRow}>
-            <Text style={[styles.changeText, { color: colors.green }]}>
-              {formatChange(change)}
-            </Text>
-            <View style={[styles.changeBadge, { backgroundColor: '#1A3A26' }]}>
-              <Text style={[styles.changeBadgeText, { color: colors.green }]}>
-                +{changePct.toFixed(2)}%
+          {portfolio.totalValue > 0 && (
+            <View style={styles.changeRow}>
+              <Text style={[styles.changeAmt, { color: changeColor }]}>
+                {formatChange(totalChange24h)}
               </Text>
+              <View style={[styles.changeBadge, { backgroundColor: changeBgColor }]}>
+                <Text style={[styles.changePct, { color: changeColor }]}>
+                  {formatChangePct(totalPct)}
+                </Text>
+              </View>
             </View>
-          </View>
+          )}
+
+          {portfolio.pricesError && (
+            <Text style={[styles.priceError, { color: colors.mutedForeground }]}>
+              Live prices unavailable — tap refresh to retry
+            </Text>
+          )}
         </View>
 
         {/* ── Action Buttons ── */}
         <View style={styles.actionsRow}>
           <ActionButton
-            icon={<Feather name="send" size={22} color={colors.primary} />}
+            icon={<Feather name="send" size={21} color={colors.primary} />}
             label="Send"
           />
           <ActionButton
-            icon={<MaterialCommunityIcons name="swap-horizontal" size={24} color={colors.primary} />}
+            icon={<MaterialCommunityIcons name="swap-horizontal" size={23} color={colors.primary} />}
             label="Swap"
           />
           <ActionButton
-            icon={<Feather name="grid" size={22} color={colors.primary} />}
+            icon={<Feather name="grid" size={21} color={colors.primary} />}
             label="Receive"
           />
           <ActionButton
-            icon={<Feather name="dollar-sign" size={22} color={colors.primary} />}
+            icon={<Feather name="dollar-sign" size={21} color={colors.primary} />}
             label="Buy"
           />
         </View>
@@ -310,293 +384,190 @@ export default function WalletScreen() {
             <Text style={[styles.cashValue, { color: colors.foreground }]}>$5,650.00</Text>
           </View>
           <Pressable style={[styles.addCashBtn, { backgroundColor: colors.primary }]}>
-            <Text style={[styles.addCashText, { color: colors.primaryForeground }]}>Add Cash</Text>
+            <Text style={[styles.addCashLabel, { color: colors.primaryForeground }]}>Add Cash</Text>
           </Pressable>
         </View>
 
-        {/* ── Tokens Section ── */}
-        <View style={styles.tokensHeader}>
-          <Text style={[styles.tokensTitle, { color: colors.foreground }]}>Tokens</Text>
-          <Feather name="chevron-right" size={20} color={colors.foreground} />
-        </View>
+        {/* ── Tokens ── */}
+        {portfolio.tokens.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Tokens</Text>
+              <Feather name="chevron-right" size={18} color={colors.foreground} />
+            </View>
 
-        <View style={[styles.tokensList, { backgroundColor: colors.card }]}>
-          {TOKENS.map((token, idx) => (
-            <React.Fragment key={token.id}>
-              <Pressable style={styles.tokenRow}>
-                <TokenAvatar token={token} />
-                <View style={styles.tokenInfo}>
-                  <View style={styles.tokenNameRow}>
-                    <Text style={[styles.tokenName, { color: colors.foreground }]}>{token.name}</Text>
-                    {token.verified && (
-                      <Ionicons name="checkmark-circle" size={14} color={colors.primary} style={{ marginLeft: 4 }} />
-                    )}
-                  </View>
-                  <Text style={[styles.tokenAmount, { color: colors.mutedForeground }]}>{token.amount}</Text>
-                </View>
-                <View style={styles.tokenValues}>
-                  <Text style={[styles.tokenValue, { color: colors.foreground }]}>
-                    {formatCurrency(token.value)}
-                  </Text>
-                  <Text style={[styles.tokenChange, { color: colors.green }]}>
-                    {formatChange(token.change)}
-                  </Text>
-                </View>
-              </Pressable>
-              {idx < TOKENS.length - 1 && (
-                <View style={[styles.tokenDivider, { backgroundColor: colors.border }]} />
-              )}
-            </React.Fragment>
-          ))}
-        </View>
+            <View style={[styles.tokensList, { backgroundColor: colors.card }]}>
+              {portfolio.tokens.map((token, idx) => (
+                <TokenRow
+                  key={token.id}
+                  token={token}
+                  isLast={idx === portfolio.tokens.length - 1}
+                />
+              ))}
+            </View>
 
-        {/* ── Manage Token List ── */}
-        <Pressable style={styles.manageTokens}>
-          <Text style={[styles.manageTokensText, { color: colors.primary }]}>Manage token list</Text>
-        </Pressable>
+            {connectedWallet && portfolio.externalTokens.length > 0 && (
+              <Text style={[styles.walletNote, { color: colors.mutedForeground }]}>
+                {portfolio.externalTokens.length} token
+                {portfolio.externalTokens.length !== 1 ? "s" : ""} from connected wallet
+              </Text>
+            )}
+
+            <Pressable style={styles.manageTokens}>
+              <Text style={[styles.manageTokensText, { color: colors.primary }]}>
+                Manage token list
+              </Text>
+            </Pressable>
+          </>
+        )}
+
+        {/* Loading placeholder */}
+        {portfolio.isLoading && portfolio.tokens.every((t) => t.value === 0) && (
+          <View style={styles.loadingPlaceholder}>
+            <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
+              Fetching live prices…
+            </Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* ── Bottom Tab Bar ── */}
-      <BottomTabBar activeTab={0} insetBottom={Platform.OS === 'web' ? 34 : insets.bottom} />
+      <BottomTabBar bottomInset={bottomPad} />
+
+      {/* ── Profile Modal ── */}
+      <ProfileModal
+        visible={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        profile={profile}
+        balances={balances}
+        connectedWallet={connectedWallet}
+        onSaveProfile={saveProfile}
+        onSaveBalances={saveBalances}
+        onConnectWallet={saveConnectedWallet}
+      />
     </View>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  scroll: { flex: 1 },
 
   // Header
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingBottom: 8,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   avatarCircle: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#5B4AE8',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  headerNameBlock: {
-    gap: 1,
-  },
-  headerHandle: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-  },
-  headerName: {
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  headerIconBtn: {
-    padding: 4,
-  },
+  avatarEmoji: { fontSize: 22 },
+  headerHandle: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  headerName: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  headerRight: { flexDirection: "row", gap: 16 },
+  headerIconBtn: { padding: 4 },
 
   // Balance
-  balanceSection: {
-    alignItems: 'center',
-    paddingTop: 24,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-  },
-  spinnerRow: {
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  balanceText: {
-    fontSize: 44,
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: -1,
-  },
-  changeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 6,
-  },
-  changeText: {
-    fontSize: 15,
-    fontFamily: 'Inter_500Medium',
-  },
-  changeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  changeBadgeText: {
-    fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
-  },
+  balanceSection: { alignItems: "center", paddingTop: 20, paddingBottom: 18, paddingHorizontal: 20 },
+  spinnerRow: { height: 34, alignItems: "center", justifyContent: "center", marginBottom: 6 },
+  balanceText: { fontSize: 44, fontFamily: "Inter_700Bold", letterSpacing: -1.5 },
+  changeRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
+  changeAmt: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  changeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  changePct: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  priceError: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 6 },
 
   // Actions
-  actionsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    gap: 8,
-  },
-  actionButtonWrap: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  actionButtonCircle: {
+  actionsRow: { flexDirection: "row", paddingHorizontal: 16, paddingBottom: 20, gap: 6 },
+  actionWrap: { alignItems: "center", gap: 7 },
+  actionCircle: {
     width: 60,
     height: 60,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  actionButtonLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-  },
+  actionLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
 
-  // Cash Balance
+  // Cash
   cashCard: {
     marginHorizontal: 16,
     borderRadius: 16,
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 24,
   },
-  cashLabel: {
-    fontSize: 13,
-    fontFamily: 'Inter_400Regular',
-    marginBottom: 4,
-  },
-  cashValue: {
-    fontSize: 20,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  addCashBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  addCashText: {
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-  },
+  cashLabel: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 4 },
+  cashValue: { fontSize: 20, fontFamily: "Inter_600SemiBold" },
+  addCashBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20 },
+  addCashLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
-  // Tokens
-  tokensHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  // Section
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 20,
     marginBottom: 12,
     gap: 4,
   },
-  tokensTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter_700Bold',
-  },
-  tokensList: {
-    marginHorizontal: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
+  sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+
+  // Token list
+  tokensList: { marginHorizontal: 16, borderRadius: 16, overflow: "hidden" },
   tokenRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 12,
   },
-  tokenAvatar: {
+  tokenAvatarWrap: { width: 44, height: 44 },
+  tokenAvatar: { width: 44, height: 44, borderRadius: 22 },
+  tokenAvatarFallback: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  tokenAvatarText: {
-    fontSize: 16,
-    fontFamily: 'Inter_700Bold',
-  },
-  tokenInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  tokenNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tokenName: {
-    fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  tokenAmount: {
-    fontSize: 13,
-    fontFamily: 'Inter_400Regular',
-  },
-  tokenValues: {
-    alignItems: 'flex-end',
-    gap: 3,
-  },
-  tokenValue: {
-    fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  tokenChange: {
-    fontSize: 13,
-    fontFamily: 'Inter_400Regular',
-  },
-  tokenDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginLeft: 72,
-  },
+  tokenAvatarInitial: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  tokenInfo: { flex: 1, gap: 3 },
+  tokenNameRow: { flexDirection: "row", alignItems: "center" },
+  tokenName: { fontSize: 15, fontFamily: "Inter_600SemiBold", flexShrink: 1 },
+  tokenAmount: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  tokenValues: { alignItems: "flex-end", gap: 3 },
+  tokenValue: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  tokenChange: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  tokenDivider: { height: StyleSheet.hairlineWidth, marginLeft: 72 },
+  extBadge: { marginLeft: 6, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4 },
+  extBadgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
 
-  // Manage tokens
-  manageTokens: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  manageTokensText: {
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-  },
+  walletNote: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 8 },
+  manageTokens: { alignItems: "center", paddingVertical: 20 },
+  manageTokensText: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  loadingPlaceholder: { alignItems: "center", paddingVertical: 32 },
+  loadingText: { fontSize: 14, fontFamily: "Inter_400Regular" },
 
-  // Bottom Tab Bar
-  bottomTabBar: {
-    flexDirection: 'row',
+  // Bottom tabs
+  tabBar: {
+    flexDirection: "row",
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: 10,
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
   },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
+  tabItem: { flex: 1, alignItems: "center", paddingVertical: 4 },
 });

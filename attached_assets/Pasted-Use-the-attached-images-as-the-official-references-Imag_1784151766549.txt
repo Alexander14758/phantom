@@ -1,0 +1,209 @@
+Use the attached images as the official references:
+
+Image 1: Use this as the official Bitcoin logo.
+Image 2: Use this as the official Solana logo.
+Image 3: Use this as the official Ethereum logo.
+
+Do not recreate or redesign these logos. Use them exactly as provided.
+
+Wallet Dashboard
+
+Build a modern cryptocurrency wallet inspired by Phantom Wallet.
+
+The three primary tokens displayed at the top of the token list should always be:
+
+Solana ✅ (verified badge)
+Bitcoin ✅ (verified badge)
+Ethereum ✅ (verified badge)
+
+Each token should display:
+
+Logo
+Token name
+Verified checkmark
+Amount owned
+USD value
+Profit/Loss beneath the value
+
+The UI should look premium, minimal, and closely resemble Phantom Wallet.
+
+⸻
+
+Editable Profile
+
+The profile section at the top (profile picture beside the username) must be clickable.
+
+When clicked, open a beautiful modal or settings page containing the following options:
+
+1. Edit Display Name
+
+Allow changing the display name.
+
+Example:
+
+Shai
+
+↓
+
+Alexander
+
+⸻
+
+2. Edit Username
+
+Allow changing the username.
+
+Example:
+
+@shai.crypto
+
+↓
+
+@alex.crypto
+
+⸻
+
+3. Edit Profile Picture
+
+Allow the user to:
+
+Upload an image
+Choose any emoji
+Remove the picture
+Crop uploaded images before saving
+
+The selected image or emoji should immediately replace the current profile picture.
+
+⸻
+
+Wallet Balance Management
+
+Inside the profile/settings page, add a section called:
+
+Wallet Assets
+
+Allow editing the balances for:
+
+Solana
+Bitcoin
+Ethereum
+
+Each balance should be editable.
+
+When saved, the wallet dashboard should instantly update.
+
+The updated balances should automatically recalculate the displayed USD values.
+
+⸻
+
+Connect Wallet
+
+Add another section called:
+
+Connect Wallet
+
+Allow the user to paste a Solana wallet address.
+
+Paste Solana Wallet Address
+
+[________________________]
+
+          Connect Wallet
+
+After pressing Connect Wallet, the application should:
+
+Validate the wallet address.
+Fetch every token held in that wallet.
+Display all tokens automatically.
+Show each token’s logo.
+Show token name.
+Show token symbol.
+Show quantity owned.
+Show live USD value.
+Show the current profit/loss if available.
+
+The connected wallet should behave like a real Phantom Wallet portfolio.
+
+⸻
+
+Automatic Token Discovery
+
+The application should automatically populate every token found in the connected wallet.
+
+The developer should not have to manually add:
+
+token names
+symbols
+logos
+decimals
+market prices
+
+Everything should be fetched automatically.
+
+⸻
+
+Token Logos
+
+Every detected token should automatically display its official logo.
+
+If no official logo exists, use a clean placeholder icon.
+
+⸻
+
+Refresh Behaviour
+
+Whenever the user refreshes the wallet:
+
+Show the Phantom-style loading spinner.
+Rotate it smoothly.
+Fetch the newest wallet information.
+Update balances.
+Update prices.
+Add newly discovered tokens.
+Remove tokens no longer owned.
+Fade the spinner away after loading.
+
+⸻
+
+Dashboard Updates
+
+After refreshing, smoothly animate:
+
+Balance changes
+USD value changes
+Profit/Loss updates
+
+Avoid instant jumps.
+
+⸻
+
+UI Style
+
+Maintain the exact premium style of Phantom Wallet:
+
+Dark mode
+Rounded cards
+Smooth animations
+Purple accents
+Modern typography
+Clean spacing
+Soft shadows
+Premium iOS-style design
+
+The experience should feel polished, fluid, and identical to a production-ready cryptocurrency wallet.
+
+⸻
+
+About the API
+
+Yes, you’ll need APIs for this functionality. A good architecture is:
+
+Solana RPC endpoint (Helius, QuickNode, Alchemy, or Solana RPC) to read a wallet’s token balances and transactions.
+CoinGecko API to fetch token prices, market data, and many token logos.
+Jupiter Token List or the Solana Token List to reliably map Solana token mint addresses to names, symbols, decimals, and logos.
+
+This combination works better than relying on CoinGecko alone, because CoinGecko doesn’t index every Solana token. The typical flow is:
+
+User enters a Solana wallet address.
+Query the Solana RPC for all token accounts in that wallet.
+Match each token’s mint address against the Solana/Jupiter token list to get its name, symbol, and logo.

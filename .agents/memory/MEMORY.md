@@ -1,0 +1,1 @@
+- [Helius real-time wallet architecture](helius-realtime-arch.md) — DAS getAssetsByOwner + transactionSubscribe WS → app WebSocket push; `ws` pkg bundled by esbuild

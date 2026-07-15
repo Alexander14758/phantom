@@ -19,7 +19,7 @@ import { useColors } from "@/hooks/useColors";
 import { BarSpinner } from "@/components/BarSpinner";
 import { ProfileModal } from "@/components/ProfileModal";
 import { useProfile } from "@/hooks/useProfile";
-import { usePortfolio, type PortfolioToken } from "@/hooks/usePortfolio";
+import { usePortfolio, type PortfolioToken, type WsStatus } from "@/hooks/usePortfolio";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatCurrency(value: number): string {
@@ -91,6 +91,34 @@ function useCountingAnimation(target: number, duration = 800) {
   );
 
   return { display, update };
+}
+
+// ─── Live Status Dot ──────────────────────────────────────────────────────────
+function LiveDot({ status, pulse }: { status: WsStatus; pulse: Animated.Value }) {
+  const colors = useColors();
+  const dotColor =
+    status === "connected"
+      ? colors.green
+      : status === "connecting"
+      ? "#F5A623"
+      : colors.mutedForeground;
+
+  return (
+    <View style={styles.liveDotWrap}>
+      <Animated.View
+        style={[
+          styles.liveDotInner,
+          {
+            backgroundColor: dotColor,
+            opacity: status === "connected" ? pulse : 1,
+          },
+        ]}
+      />
+      <Text style={[styles.liveDotLabel, { color: dotColor }]}>
+        {status === "connected" ? "Live" : status === "connecting" ? "…" : ""}
+      </Text>
+    </View>
+  );
 }
 
 // ─── Token Row ─────────────────────────────────────────────────────────────────
@@ -239,6 +267,20 @@ export default function WalletScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [spinnerVisible, setSpinnerVisible] = useState(false);
 
+  // Pulse animation for live indicator dot
+  const livePulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (portfolio.wsStatus !== "connected") return;
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(livePulse, { toValue: 0.3, duration: 900, useNativeDriver: true }),
+        Animated.timing(livePulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [portfolio.wsStatus, livePulse]);
+
   const { display: displayBalance, update: updateBalance } = useCountingAnimation(0);
 
   // Sync balance counter when portfolio value changes
@@ -318,6 +360,10 @@ export default function WalletScreen() {
             </View>
           </Pressable>
           <View style={styles.headerRight}>
+            {/* Live indicator — shown when wallet is connected via WebSocket */}
+            {connectedWallet && (
+              <LiveDot status={portfolio.wsStatus} pulse={livePulse} />
+            )}
             <Pressable style={styles.headerIconBtn} onPress={handleRefresh} hitSlop={8}>
               <Feather name="clock" size={22} color={colors.foreground} />
             </Pressable>
@@ -336,6 +382,16 @@ export default function WalletScreen() {
           <Text style={[styles.balanceText, { color: colors.foreground }]}>
             {formatCurrency(displayBalance)}
           </Text>
+
+          {/* Pending transaction indicator */}
+          {portfolio.pendingTx && (
+            <View style={styles.pendingTxRow}>
+              <View style={[styles.pendingTxDot, { backgroundColor: colors.primary }]} />
+              <Text style={[styles.pendingTxText, { color: colors.primary }]}>
+                Transaction detected…
+              </Text>
+            </View>
+          )}
 
           {portfolio.totalValue > 0 && (
             <View style={styles.changeRow}>
@@ -406,10 +462,10 @@ export default function WalletScreen() {
               ))}
             </View>
 
-            {connectedWallet && portfolio.externalTokens.length > 0 && (
+            {connectedWallet && portfolio.walletTokens.length > 0 && (
               <Text style={[styles.walletNote, { color: colors.mutedForeground }]}>
-                {portfolio.externalTokens.length} token
-                {portfolio.externalTokens.length !== 1 ? "s" : ""} from connected wallet
+                {portfolio.walletTokens.length} token
+                {portfolio.walletTokens.length !== 1 ? "s" : ""} from connected wallet
               </Text>
             )}
 
@@ -552,6 +608,16 @@ const styles = StyleSheet.create({
   tokenDivider: { height: StyleSheet.hairlineWidth, marginLeft: 72 },
   extBadge: { marginLeft: 6, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4 },
   extBadgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+
+  // Live dot
+  liveDotWrap: { flexDirection: "row", alignItems: "center", gap: 5, marginRight: 4 },
+  liveDotInner: { width: 7, height: 7, borderRadius: 4 },
+  liveDotLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+
+  // Pending tx
+  pendingTxRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 },
+  pendingTxDot: { width: 6, height: 6, borderRadius: 3 },
+  pendingTxText: { fontSize: 12, fontFamily: "Inter_500Medium" },
 
   walletNote: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 8 },
   manageTokens: { alignItems: "center", paddingVertical: 20 },

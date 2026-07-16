@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { type Balances } from "./useProfile";
 
-// ─── API helpers ───────────────────────────────────────────────────────────────
+// ─── Storage keys ─────────────────────────────────────────────────────────────
+const STORE = {
+  REMOVED: "@portfolio/removed_mints",
+  OVERRIDES: "@portfolio/token_overrides",
+} as const;
 
+const SOL_MINT = "So11111111111111111111111111111111111111112";
+
+// ─── API helpers ───────────────────────────────────────────────────────────────
 function getApiBase(): string {
   const domain = process.env["EXPO_PUBLIC_DOMAIN"];
   return domain ? `https://${domain}` : "";
@@ -11,9 +19,7 @@ function getApiBase(): string {
 
 function getWsUrl(): string {
   const domain = process.env["EXPO_PUBLIC_DOMAIN"];
-  return domain
-    ? `wss://${domain}/api/wallet-ws`
-    : "ws://localhost:8080/api/wallet-ws";
+  return domain ? `wss://${domain}/api/wallet-ws` : "ws://localhost:8080/api/wallet-ws";
 }
 
 async function fetchPrices(): Promise<CoinMarketData[]> {
@@ -23,7 +29,6 @@ async function fetchPrices(): Promise<CoinMarketData[]> {
 }
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-
 export interface CoinMarketData {
   id: string;
   symbol: string;
@@ -61,14 +66,20 @@ export interface PortfolioToken {
   price: number;
   value: number;
   change24h: number;
+  /** User-set P&L override in USD (signed: positive = profit, negative = loss) */
+  pnlUsdOverride?: number;
   verified: boolean;
   isWallet?: boolean;
 }
 
+export interface TokenOverride {
+  balance?: number;
+  pnlUsd?: number; // signed USD P&L
+}
+
 export type WsStatus = "disconnected" | "connecting" | "connected" | "error";
 
-// ─── CoinGecko fallback images ────────────────────────────────────────────────
-
+// ─── Fallback images ───────────────────────────────────────────────────────────
 const FALLBACK_IMAGES: Record<string, string> = {
   solana: "https://assets.coingecko.com/coins/images/4128/large/solana.png",
   bitcoin: "https://assets.coingecko.com/coins/images/1/large/bitcoin.png",
@@ -76,9 +87,8 @@ const FALLBACK_IMAGES: Record<string, string> = {
 };
 
 // ─── Hook ──────────────────────────────────────────────────────────────────────
-
 export function usePortfolio(balances: Balances, connectedAddress?: string | null) {
-  // ── CoinGecko prices for BTC / ETH / SOL (manual holdings) ──────────────
+  // ── Prices from CoinGecko ──────────────────────────────────────────────────
   const {
     data: pricesData,
     isLoading: pricesLoading,
@@ -92,17 +102,52 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
     retry: 2,
   });
 
-  // ── Wallet real-time state ────────────────────────────────────────────────
+  // ── Wallet real-time state ─────────────────────────────────────────────────
   const [walletData, setWalletData] = useState<WalletResponse | null>(null);
   const [wsStatus, setWsStatus] = useState<WsStatus>("disconnected");
-  const [pendingTx, setPendingTx] = useState(false); // transaction in-flight indicator
+  const [pendingTx, setPendingTx] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const destroyedRef = useRef(false);
 
-  // Open WebSocket connection when a wallet is connected
+  // ── Token customization (removed & overrides) ─────────────────────────────
+  const [removedMints, setRemovedMints] = useState<Set<string>>(new Set());
+  const [tokenOverrides, setTokenOverrides] = useState<Record<string, TokenOverride>>({});
+  const overridesLoaded = useRef(false);
+
+  useEffect(() => {
+    AsyncStorage.multiGet([STORE.REMOVED, STORE.OVERRIDES])
+      .then(([[, rv], [, ov]]) => {
+        if (rv) setRemovedMints(new Set(JSON.parse(rv) as string[]));
+        if (ov) setTokenOverrides(JSON.parse(ov) as Record<string, TokenOverride>);
+        overridesLoaded.current = true;
+      })
+      .catch(() => { overridesLoaded.current = true; });
+  }, []);
+
+  const removeToken = useCallback((id: string) => {
+    setRemovedMints((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      void AsyncStorage.setItem(STORE.REMOVED, JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
+  const editToken = useCallback((id: string, balance: number, pnlUsd: number | null) => {
+    setTokenOverrides((prev) => {
+      const next: Record<string, TokenOverride> = {
+        ...prev,
+        [id]: { balance, pnlUsd: pnlUsd ?? undefined },
+      };
+      void AsyncStorage.setItem(STORE.OVERRIDES, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  // ── WebSocket connection ───────────────────────────────────────────────────
   useEffect(() => {
     if (!connectedAddress) {
       setWalletData(null);
@@ -121,9 +166,7 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
         ws = new WebSocket(getWsUrl());
       } catch {
         setWsStatus("error");
-        if (!destroyedRef.current) {
-          reconnectTimerRef.current = setTimeout(connect, 5_000);
-        }
+        if (!destroyedRef.current) reconnectTimerRef.current = setTimeout(connect, 5_000);
         return;
       }
 
@@ -133,13 +176,9 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
         if (destroyedRef.current) { ws.close(); return; }
         setWsStatus("connected");
         ws.send(JSON.stringify({ type: "subscribe", address: connectedAddress }));
-
-        // Heartbeat every 30 s to keep the connection alive through proxies
         if (pingTimerRef.current) clearInterval(pingTimerRef.current);
         pingTimerRef.current = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "ping" }));
-          }
+          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
         }, 30_000);
       };
 
@@ -150,29 +189,20 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
             data?: WalletResponse;
             signature?: string;
           };
-
           if (msg.type === "portfolio" && msg.data) {
             setWalletData(msg.data);
             setPendingTx(false);
           } else if (msg.type === "transaction") {
-            // A tx was just detected — show loading hint before new data arrives
             setPendingTx(true);
           }
-        } catch {
-          // Ignore
-        }
+        } catch { /* ignore */ }
       };
 
-      ws.onerror = () => {
-        setWsStatus("error");
-      };
-
+      ws.onerror = () => setWsStatus("error");
       ws.onclose = () => {
         setWsStatus("disconnected");
         if (pingTimerRef.current) clearInterval(pingTimerRef.current);
-        if (!destroyedRef.current) {
-          reconnectTimerRef.current = setTimeout(connect, 3_000);
-        }
+        if (!destroyedRef.current) reconnectTimerRef.current = setTimeout(connect, 3_000);
       };
     };
 
@@ -189,29 +219,22 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
     };
   }, [connectedAddress]);
 
-  // Also poll as a safety net when WS is unhealthy (every 30 s)
+  // Polling fallback when WS is unhealthy
   useEffect(() => {
     if (!connectedAddress) return;
-
     const poll = async () => {
       if (wsStatus !== "connected") {
         try {
           const res = await fetch(`${getApiBase()}/api/wallet/${connectedAddress}`);
-          if (res.ok) {
-            const data = (await res.json()) as WalletResponse;
-            setWalletData(data);
-          }
-        } catch {
-          // Silently ignore
-        }
+          if (res.ok) setWalletData((await res.json()) as WalletResponse);
+        } catch { /* ignore */ }
       }
     };
-
-    const timer = setInterval(poll, 30_000);
-    return () => clearInterval(timer);
+    const t = setInterval(poll, 30_000);
+    return () => clearInterval(t);
   }, [connectedAddress, wsStatus]);
 
-  // ── Build price map from CoinGecko ───────────────────────────────────────
+  // ── Price map ──────────────────────────────────────────────────────────────
   type PriceEntry = { price: number; change24h: number; image: string };
   const priceMap: Record<string, PriceEntry> = {};
   if (pricesData) {
@@ -224,16 +247,36 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
     }
   }
 
-  // ── Manual holdings (SOL / BTC / ETH) ────────────────────────────────────
+  // ── Apply override to a token ──────────────────────────────────────────────
+  const applyOverride = (token: PortfolioToken): PortfolioToken => {
+    const ov = tokenOverrides[token.id];
+    if (!ov) return token;
+    const amount = ov.balance !== undefined ? ov.balance : token.amount;
+    const value = amount * token.price;
+    return {
+      ...token,
+      amount,
+      value,
+      pnlUsdOverride: ov.pnlUsd,
+    };
+  };
+
+  // ── Find wallet SOL to auto-replace manual SOL balance ────────────────────
+  const walletSolToken = walletData?.tokens.find((t) => t.mint === SOL_MINT);
+  const effectiveSolAmount = walletSolToken ? walletSolToken.amount : balances.solana;
+  // Use Helius price for SOL if wallet is connected (it's fresh), else CoinGecko
+  const effectiveSolPrice = walletSolToken?.usdPrice ?? priceMap["solana"]?.price ?? 0;
+
+  // ── Main holdings (SOL auto-replaces from wallet, BTC/ETH always manual) ──
   const mainTokens: PortfolioToken[] = [
     {
       id: "solana",
       name: "Solana",
       symbol: "SOL",
       image: priceMap["solana"]?.image ?? FALLBACK_IMAGES["solana"]!,
-      amount: balances.solana,
-      price: priceMap["solana"]?.price ?? 0,
-      value: balances.solana * (priceMap["solana"]?.price ?? 0),
+      amount: effectiveSolAmount,
+      price: effectiveSolPrice,
+      value: effectiveSolAmount * effectiveSolPrice,
       change24h: priceMap["solana"]?.change24h ?? 0,
       verified: true,
     },
@@ -259,46 +302,46 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
       change24h: priceMap["ethereum"]?.change24h ?? 0,
       verified: true,
     },
-  ];
+  ]
+    .filter((t) => !removedMints.has(t.id))
+    .map(applyOverride);
 
-  // ── Wallet tokens from Helius real-time feed ──────────────────────────────
-  const walletTokens: PortfolioToken[] = (walletData?.tokens ?? []).map((t) => ({
-    id: t.mint,
-    name: t.name,
-    symbol: t.symbol,
-    image: t.logo ?? "",
-    amount: t.amount,
-    price: t.usdPrice ?? 0,
-    value: t.usdValue ?? 0,
-    change24h: t.priceChange24h ?? 0,
-    verified: false,
-    isWallet: true,
-  }));
+  // ── Wallet tokens from Helius (exclude SOL – already merged above) ─────────
+  const walletTokens: PortfolioToken[] = (walletData?.tokens ?? [])
+    .filter((t) => t.mint !== SOL_MINT && !removedMints.has(t.mint))
+    .map((t): PortfolioToken => ({
+      id: t.mint,
+      name: t.name,
+      symbol: t.symbol,
+      image: t.logo ?? "",
+      amount: t.amount,
+      price: t.usdPrice ?? 0,
+      value: t.usdValue ?? 0,
+      change24h: t.priceChange24h ?? 0,
+      verified: false,
+      isWallet: true,
+    }))
+    .map(applyOverride);
 
   const allTokens = [...mainTokens, ...walletTokens];
-  const totalValue = allTokens.reduce((sum, t) => sum + t.value, 0);
+  const totalValue = allTokens.reduce((s, t) => s + t.value, 0);
 
-  // 24h USD change (across all tokens that have change data)
   const totalChange24h = allTokens.reduce((sum, t) => {
+    if (t.pnlUsdOverride !== undefined) return sum + t.pnlUsdOverride;
     if (!t.change24h || !t.value) return sum;
-    const prevValue = t.value / (1 + t.change24h / 100);
-    return sum + (t.value - prevValue);
+    return sum + (t.value - t.value / (1 + t.change24h / 100));
   }, 0);
 
-  // ── Manual refetch (pull-to-refresh / clock tap) ──────────────────────────
+  // ── Manual refetch ─────────────────────────────────────────────────────────
   const refetch = useCallback(async () => {
     await refetchPrices();
-    // Ask server to push fresh wallet data via WS
     if (wsRef.current?.readyState === WebSocket.OPEN && connectedAddress) {
       wsRef.current.send(JSON.stringify({ type: "subscribe", address: connectedAddress }));
     } else if (connectedAddress) {
-      // Fallback: REST fetch
       try {
         const res = await fetch(`${getApiBase()}/api/wallet/${connectedAddress}`);
         if (res.ok) setWalletData((await res.json()) as WalletResponse);
-      } catch {
-        // ignore
-      }
+      } catch { /* ignore */ }
     }
   }, [refetchPrices, connectedAddress]);
 
@@ -314,6 +357,9 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
     pricesError,
     wsStatus,
     pendingTx,
+    removedMints,
+    removeToken,
+    editToken,
     refetch,
   };
 }

@@ -18,6 +18,8 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { BarSpinner } from "@/components/BarSpinner";
 import { ProfileModal } from "@/components/ProfileModal";
+import { SwipeableRow } from "@/components/SwipeableRow";
+import { EditTokenModal } from "@/components/EditTokenModal";
 import { useProfile } from "@/hooks/useProfile";
 import { usePortfolio, type PortfolioToken, type WsStatus } from "@/hooks/usePortfolio";
 
@@ -124,13 +126,22 @@ function LiveDot({ status, pulse }: { status: WsStatus; pulse: Animated.Value })
 // ─── Token Row ─────────────────────────────────────────────────────────────────
 function TokenRow({ token, isLast }: { token: PortfolioToken; isLast: boolean }) {
   const colors = useColors();
-  const isPositive = token.change24h >= 0;
+
+  // Use manual P&L override when set, otherwise derive from live 24 h change
+  const tokenChangeUsd =
+    token.pnlUsdOverride !== undefined
+      ? token.pnlUsdOverride
+      : token.value - token.value / (1 + token.change24h / 100);
+  const isPositive = tokenChangeUsd >= 0;
   const changeColor = isPositive ? colors.green : colors.destructive;
-  const tokenChangeUsd = token.value - token.value / (1 + token.change24h / 100);
 
   return (
     <>
-      <Pressable style={styles.tokenRow} android_ripple={{ color: colors.border }}>
+      {/* backgroundColor here makes the sliding row opaque over swipe-action buttons */}
+      <Pressable
+        style={[styles.tokenRow, { backgroundColor: colors.card }]}
+        android_ripple={{ color: colors.border }}
+      >
         {/* Avatar */}
         <View style={styles.tokenAvatarWrap}>
           {token.image ? (
@@ -162,7 +173,7 @@ function TokenRow({ token, isLast }: { token: PortfolioToken; isLast: boolean })
                 style={{ marginLeft: 3 }}
               />
             )}
-            {token.isExternal && (
+            {token.isWallet && (
               <View style={[styles.extBadge, { backgroundColor: colors.primary + "22" }]}>
                 <Text style={[styles.extBadgeText, { color: colors.primary }]}>wallet</Text>
               </View>
@@ -178,7 +189,7 @@ function TokenRow({ token, isLast }: { token: PortfolioToken; isLast: boolean })
           <Text style={[styles.tokenValue, { color: colors.foreground }]}>
             {token.value > 0 ? formatCurrency(token.value) : "—"}
           </Text>
-          {token.change24h !== 0 && token.value > 0 && (
+          {tokenChangeUsd !== 0 && token.value > 0 && (
             <Text style={[styles.tokenChange, { color: changeColor }]}>
               {formatChange(tokenChangeUsd)}
             </Text>
@@ -264,6 +275,7 @@ export default function WalletScreen() {
   const portfolio = usePortfolio(balances, connectedWallet?.address);
 
   const [profileOpen, setProfileOpen] = useState(false);
+  const [editingToken, setEditingToken] = useState<PortfolioToken | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [spinnerVisible, setSpinnerVisible] = useState(false);
 
@@ -454,11 +466,21 @@ export default function WalletScreen() {
 
             <View style={[styles.tokensList, { backgroundColor: colors.card }]}>
               {portfolio.tokens.map((token, idx) => (
-                <TokenRow
+                <SwipeableRow
                   key={token.id}
-                  token={token}
-                  isLast={idx === portfolio.tokens.length - 1}
-                />
+                  onEdit={() => setEditingToken(token)}
+                  onRemove={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    portfolio.removeToken(token.id);
+                  }}
+                  editColor={colors.primary}
+                  removeColor={colors.destructive}
+                >
+                  <TokenRow
+                    token={token}
+                    isLast={idx === portfolio.tokens.length - 1}
+                  />
+                </SwipeableRow>
               ))}
             </View>
 
@@ -500,6 +522,17 @@ export default function WalletScreen() {
         onSaveProfile={saveProfile}
         onSaveBalances={saveBalances}
         onConnectWallet={saveConnectedWallet}
+      />
+
+      {/* ── Edit Token Modal ── */}
+      <EditTokenModal
+        visible={editingToken !== null}
+        token={editingToken}
+        onClose={() => setEditingToken(null)}
+        onSave={(id, balance, pnlUsd) => {
+          portfolio.editToken(id, balance, pnlUsd ?? 0);
+          setEditingToken(null);
+        }}
       />
     </View>
   );

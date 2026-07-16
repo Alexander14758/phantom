@@ -51,6 +51,7 @@ export function ProfileModal({
   const [solBalance, setSolBalance] = useState(balances.solana.toString());
   const [btcBalance, setBtcBalance] = useState(balances.bitcoin.toString());
   const [ethBalance, setEthBalance] = useState(balances.ethereum.toString());
+  const [cashBalance, setCashBalance] = useState((balances.cash ?? 5650).toString());
   const [walletAddress, setWalletAddress] = useState(connectedWallet?.address ?? "");
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState("");
@@ -64,6 +65,7 @@ export function ProfileModal({
       setSolBalance(balances.solana.toString());
       setBtcBalance(balances.bitcoin.toString());
       setEthBalance(balances.ethereum.toString());
+      setCashBalance((balances.cash ?? 5650).toString());
       setWalletAddress(connectedWallet?.address ?? "");
       setConnectError("");
     }
@@ -78,6 +80,7 @@ export function ProfileModal({
           solana: Math.max(0, parseFloat(solBalance) || 0),
           bitcoin: Math.max(0, parseFloat(btcBalance) || 0),
           ethereum: Math.max(0, parseFloat(ethBalance) || 0),
+          cash: Math.max(0, parseFloat(cashBalance) || 0),
         }),
       ]);
       onClose();
@@ -207,6 +210,7 @@ export function ProfileModal({
               { label: "Solana (SOL)", value: solBalance, onChange: setSolBalance },
               { label: "Bitcoin (BTC)", value: btcBalance, onChange: setBtcBalance },
               { label: "Ethereum (ETH)", value: ethBalance, onChange: setEthBalance },
+              { label: "Cash (USD)", value: cashBalance, onChange: setCashBalance },
             ].map((field, idx, arr) => (
               <View
                 key={field.label}

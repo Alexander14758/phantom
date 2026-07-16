@@ -37,4 +37,11 @@ app.use("/api", router);
 // GET / → public/index.html  (the web version of the wallet)
 app.use(express.static(publicPath));
 
+// Catch-all: any path not handled above (including the Replit proxy prefix) serves
+// the web wallet so the preview pane can reach index.html from any base path.
+// Express 5 requires a named wildcard — use /{*path} instead of bare *.
+app.get("/{*path}", (_req, res) => {
+  res.sendFile(join(publicPath, "index.html"));
+});
+
 export default app;

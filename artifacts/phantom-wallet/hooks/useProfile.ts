@@ -11,6 +11,7 @@ export interface Balances {
   solana: number;
   bitcoin: number;
   ethereum: number;
+  cash: number;
 }
 
 export interface ConnectedWallet {
@@ -27,6 +28,7 @@ const DEFAULT_BALANCES: Balances = {
   solana: 3652.05,
   bitcoin: 0.3,
   ethereum: 2.5,
+  cash: 5650.00,
 };
 
 const KEYS = {

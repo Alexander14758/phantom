@@ -197,7 +197,11 @@ function TokenRow({ token, isLast }: { token: PortfolioToken; isLast: boolean })
         </View>
       </Pressable>
       {!isLast && (
-        <View style={[styles.tokenDivider, { backgroundColor: colors.border }]} />
+        // Opaque wrapper prevents the red swipe-action button showing through
+        // the transparent left margin of the divider line
+        <View style={{ backgroundColor: colors.card }}>
+          <View style={[styles.tokenDivider, { backgroundColor: colors.border }]} />
+        </View>
       )}
     </>
   );
@@ -449,7 +453,9 @@ export default function WalletScreen() {
         <View style={[styles.cashCard, { backgroundColor: colors.card }]}>
           <View>
             <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>Cash Balance</Text>
-            <Text style={[styles.cashValue, { color: colors.foreground }]}>$5,650.00</Text>
+            <Text style={[styles.cashValue, { color: colors.foreground }]}>
+              {formatCurrency(balances.cash ?? 0)}
+            </Text>
           </View>
           <Pressable style={[styles.addCashBtn, { backgroundColor: colors.primary }]}>
             <Text style={[styles.addCashLabel, { color: colors.primaryForeground }]}>Add Cash</Text>

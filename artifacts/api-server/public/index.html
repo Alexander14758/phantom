@@ -193,7 +193,6 @@ img{display:block}
         </div>
       </div>
       <div class="hdr-r">
-        <div class="live hidden" id="ldot"><div class="live-inner"></div><span id="ltxt">Live</span></div>
         <button class="icon-btn" onclick="doRefresh()" title="Refresh">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </button>
@@ -446,14 +445,6 @@ function render(){
   $('hhandle').textContent=S.profile.username;
   $('hname').textContent=S.profile.name;
 
-  // Live dot
-  const ld=$('ldot');
-  if(S.addr){
-    ld.classList.remove('hidden');
-    const on=S.wsStatus==='connected';
-    ld.className='live'+(on?' on':' wait');
-    $('ltxt').textContent=on?'Live':'…';
-  } else ld.classList.add('hidden');
 
   // Pending
   $('ptx').classList.toggle('show',S.pendingTx);

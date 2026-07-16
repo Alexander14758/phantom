@@ -376,10 +376,6 @@ export default function WalletScreen() {
             </View>
           </Pressable>
           <View style={styles.headerRight}>
-            {/* Live indicator — shown when wallet is connected via WebSocket */}
-            {connectedWallet && (
-              <LiveDot status={portfolio.wsStatus} pulse={livePulse} />
-            )}
             <Pressable style={styles.headerIconBtn} onPress={handleRefresh} hitSlop={8}>
               <Feather name="clock" size={22} color={colors.foreground} />
             </Pressable>

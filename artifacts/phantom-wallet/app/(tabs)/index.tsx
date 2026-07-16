@@ -173,11 +173,6 @@ function TokenRow({ token, isLast }: { token: PortfolioToken; isLast: boolean })
                 style={{ marginLeft: 3 }}
               />
             )}
-            {token.isWallet && (
-              <View style={[styles.extBadge, { backgroundColor: colors.primary + "22" }]}>
-                <Text style={[styles.extBadgeText, { color: colors.primary }]}>wallet</Text>
-              </View>
-            )}
           </View>
           <Text style={[styles.tokenAmount, { color: colors.mutedForeground }]} numberOfLines={1}>
             {formatAmount(token.amount, token.symbol)}
@@ -524,6 +519,12 @@ export default function WalletScreen() {
         onSaveProfile={saveProfile}
         onSaveBalances={saveBalances}
         onConnectWallet={saveConnectedWallet}
+        allWalletTokens={portfolio.allWalletTokens}
+        removedMints={portfolio.removedMints}
+        walletDisplayLimit={portfolio.walletDisplayLimit}
+        onSetWalletLimit={portfolio.setWalletLimit}
+        onRemoveWalletToken={portfolio.removeToken}
+        onRestoreWalletToken={portfolio.restoreToken}
       />
 
       {/* ── Edit Token Modal ── */}

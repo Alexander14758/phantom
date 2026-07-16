@@ -7,6 +7,7 @@ import { type Balances } from "./useProfile";
 const STORE = {
   REMOVED: "@portfolio/removed_mints",
   OVERRIDES: "@portfolio/token_overrides",
+  WALLET_LIMIT: "@portfolio/wallet_limit",
 } as const;
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
@@ -115,13 +116,15 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
   // ── Token customization (removed & overrides) ─────────────────────────────
   const [removedMints, setRemovedMints] = useState<Set<string>>(new Set());
   const [tokenOverrides, setTokenOverrides] = useState<Record<string, TokenOverride>>({});
+  const [walletDisplayLimit, setWalletDisplayLimitState] = useState<number>(0); // 0 = show all
   const overridesLoaded = useRef(false);
 
   useEffect(() => {
-    AsyncStorage.multiGet([STORE.REMOVED, STORE.OVERRIDES])
-      .then(([[, rv], [, ov]]) => {
+    AsyncStorage.multiGet([STORE.REMOVED, STORE.OVERRIDES, STORE.WALLET_LIMIT])
+      .then(([[, rv], [, ov], [, wl]]) => {
         if (rv) setRemovedMints(new Set(JSON.parse(rv) as string[]));
         if (ov) setTokenOverrides(JSON.parse(ov) as Record<string, TokenOverride>);
+        if (wl) setWalletDisplayLimitState(JSON.parse(wl) as number);
         overridesLoaded.current = true;
       })
       .catch(() => { overridesLoaded.current = true; });
@@ -134,6 +137,20 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
       void AsyncStorage.setItem(STORE.REMOVED, JSON.stringify([...next]));
       return next;
     });
+  }, []);
+
+  const restoreToken = useCallback((id: string) => {
+    setRemovedMints((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      void AsyncStorage.setItem(STORE.REMOVED, JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
+  const setWalletLimit = useCallback((limit: number) => {
+    setWalletDisplayLimitState(limit);
+    void AsyncStorage.setItem(STORE.WALLET_LIMIT, JSON.stringify(limit));
   }, []);
 
   const editToken = useCallback((id: string, balance: number, pnlUsd: number | null) => {
@@ -306,9 +323,9 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
     .filter((t) => !removedMints.has(t.id))
     .map(applyOverride);
 
-  // ── Wallet tokens from Helius (exclude SOL – already merged above) ─────────
-  const walletTokens: PortfolioToken[] = (walletData?.tokens ?? [])
-    .filter((t) => t.mint !== SOL_MINT && !removedMints.has(t.mint))
+  // ── All wallet tokens from Helius (full list, for management UI) ─────────
+  const allWalletTokens: PortfolioToken[] = (walletData?.tokens ?? [])
+    .filter((t) => t.mint !== SOL_MINT)
     .map((t): PortfolioToken => ({
       id: t.mint,
       name: t.name,
@@ -320,8 +337,17 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
       change24h: t.priceChange24h ?? 0,
       verified: false,
       isWallet: true,
-    }))
+    }));
+
+  // Wallet tokens shown on dashboard (removed + limit applied)
+  const walletTokensFiltered: PortfolioToken[] = allWalletTokens
+    .filter((t) => !removedMints.has(t.id))
     .map(applyOverride);
+
+  const walletTokens =
+    walletDisplayLimit > 0
+      ? walletTokensFiltered.slice(0, walletDisplayLimit)
+      : walletTokensFiltered;
 
   const allTokens = [...mainTokens, ...walletTokens];
   const totalValue = allTokens.reduce((s, t) => s + t.value, 0);
@@ -349,6 +375,7 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
     tokens: allTokens,
     mainTokens,
     walletTokens,
+    allWalletTokens,
     totalValue,
     totalChange24h,
     priceMap,
@@ -358,7 +385,10 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
     wsStatus,
     pendingTx,
     removedMints,
+    walletDisplayLimit,
     removeToken,
+    restoreToken,
+    setWalletLimit,
     editToken,
     refetch,
   };

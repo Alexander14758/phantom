@@ -7,15 +7,15 @@ import {
   Text,
   View,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 
-const ACTION_W = 76; // width of each action button
-const SNAP_THRESHOLD = 40; // drag distance to snap open
+const ACTION_W = 76;
+const SNAP_THRESHOLD = 40;
+const HOLD_DELAY = 2000; // ms to hold before swipe activates
 
 interface SwipeableRowProps {
   children: React.ReactNode;
-  /** Swipe left → reveals Edit on the right */
   onEdit?: () => void;
-  /** Swipe right → reveals Remove on the left */
   onRemove?: () => void;
   editColor?: string;
   removeColor?: string;
@@ -29,8 +29,9 @@ export function SwipeableRow({
   removeColor = "#FF4444",
 }: SwipeableRowProps) {
   const translateX = useRef(new Animated.Value(0)).current;
-  // Shadow-track the animated value without listeners (avoids memory leaks)
   const currentX = useRef(0);
+  // Set to true only after the 2-second hold fires
+  const swipeEnabledRef = useRef(false);
 
   React.useEffect(() => {
     const id = translateX.addListener(({ value }) => {
@@ -54,11 +55,18 @@ export function SwipeableRow({
 
   const panResponder = useRef(
     PanResponder.create({
-      // Only capture clearly horizontal gestures
+      // Don't claim touch on start — wait for swipe to be enabled via long press
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      // Claim horizontal movement only after the 2-second hold has fired
       onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5 && Math.abs(gs.dx) > 8,
+        swipeEnabledRef.current &&
+        Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5 &&
+        Math.abs(gs.dx) > 8,
       onMoveShouldSetPanResponderCapture: (_, gs) =>
-        Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5 && Math.abs(gs.dx) > 12,
+        swipeEnabledRef.current &&
+        Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5 &&
+        Math.abs(gs.dx) > 12,
 
       onPanResponderGrant: () => {
         translateX.setOffset(currentX.current);
@@ -66,7 +74,6 @@ export function SwipeableRow({
       },
 
       onPanResponderMove: (_, gs) => {
-        // Allow left swipe (negative) to show Edit, right swipe to show Remove
         const max = onRemove ? ACTION_W : 0;
         const min = onEdit ? -ACTION_W : 0;
         translateX.setValue(Math.max(min, Math.min(max, gs.dx)));
@@ -75,11 +82,10 @@ export function SwipeableRow({
       onPanResponderRelease: (_, gs) => {
         translateX.flattenOffset();
         const x = currentX.current;
-
         if (x < -SNAP_THRESHOLD && onEdit) {
-          snapTo(-ACTION_W); // reveal Edit
+          snapTo(-ACTION_W);
         } else if (x > SNAP_THRESHOLD && onRemove) {
-          snapTo(ACTION_W); // reveal Remove
+          snapTo(ACTION_W);
         } else {
           snapTo(0);
         }
@@ -91,6 +97,18 @@ export function SwipeableRow({
       },
     })
   ).current;
+
+  const handleLongPress = () => {
+    swipeEnabledRef.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+  };
+
+  const handlePressOut = () => {
+    // Delay reset so pan responder can finish its release animation
+    setTimeout(() => {
+      swipeEnabledRef.current = false;
+    }, 400);
+  };
 
   return (
     <View style={styles.container}>
@@ -126,13 +144,21 @@ export function SwipeableRow({
         </View>
       )}
 
-      {/* Sliding row */}
-      <Animated.View
-        style={[styles.row, { transform: [{ translateX }] }]}
-        {...panResponder.panHandlers}
+      {/* Pressable detects the 2-second hold; pan handlers handle the slide */}
+      <Pressable
+        onLongPress={handleLongPress}
+        onPressOut={handlePressOut}
+        delayLongPress={HOLD_DELAY}
+        android_ripple={null}
+        style={{ flex: 1 }}
       >
-        {children}
-      </Animated.View>
+        <Animated.View
+          style={[styles.row, { transform: [{ translateX }] }]}
+          {...panResponder.panHandlers}
+        >
+          {children}
+        </Animated.View>
+      </Pressable>
     </View>
   );
 }
@@ -174,8 +200,5 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.3,
   },
-  row: {
-    // Background must match the card so the sliding row covers action buttons during mid-swipe
-    // The parent card sets its own backgroundColor — this is transparent
-  },
+  row: {},
 });

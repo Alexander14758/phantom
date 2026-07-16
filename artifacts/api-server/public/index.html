@@ -88,23 +88,31 @@ img{display:block}
 .sw-l{left:0;background:var(--red)}
 .sw-r{right:0;background:var(--primary);color:var(--pf)}
 .tok-row{display:flex;align-items:center;padding:14px 16px;gap:12px;background:var(--card);position:relative;z-index:2;transition:transform .25s cubic-bezier(.25,.46,.45,.94)}
-.tok-row:hover .h-acts{opacity:1}
-.h-acts{position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;gap:6px;opacity:0;transition:opacity .15s}
-.hb{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
-.hb.e{background:rgba(171,159,242,.15);color:var(--primary)}
-.hb.r{background:rgba(255,68,68,.15);color:var(--red)}
+/* hold-to-swipe: highlight row during the 2s hold */
+.tok-row.holding{background:rgba(171,159,242,.06)}
 .tok-av{width:44px;height:44px;border-radius:50%;object-fit:contain;flex-shrink:0}
 .tok-fb{width:44px;height:44px;border-radius:50%;background:var(--sec);display:none;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
 .tok-inf{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .tok-nr{display:flex;align-items:center;gap:4px}
 .tok-nm{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tok-ck{color:var(--primary);font-size:11px}
-.tok-wb{background:rgba(171,159,242,.15);color:var(--primary);font-size:10px;font-weight:600;padding:1px 5px;border-radius:4px}
 .tok-amt{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tok-vals{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
 .tok-v{font-size:15px;font-weight:600}
 .tok-ch{font-size:13px}
 .tok-div{height:1px;background:var(--border);margin-left:72px}
+
+/* Wallet token manager */
+.wtk-row{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .1s}
+.wtk-row:active{background:rgba(255,255,255,.04)}
+.wtk-av{width:34px;height:34px;border-radius:50%;object-fit:contain;flex-shrink:0}
+.wtk-fb{width:34px;height:34px;border-radius:50%;background:var(--sec);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.wtk-nm{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wtk-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.wtk-cb{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.wtk-cb.on{background:var(--primary);border-color:var(--primary)}
+.lim-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.lim-btn{padding:8px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s}
+.lim-btn.on{background:var(--primary);border-color:var(--primary);color:var(--pf)}
 
 .wall-note{text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
 .mgmt{text-align:center;padding:20px 0;font-size:14px;font-weight:500;color:var(--primary);background:none;border:none;width:100%;cursor:pointer}
@@ -224,7 +232,7 @@ img{display:block}
     <!-- Cash card -->
     <div class="cash">
       <div><div class="cash-lbl">Cash Balance</div><div class="cash-val" id="cashVal">$0.00</div></div>
-      <button class="cash-btn" onclick="openProfile()">Edit</button>
+      <button class="cash-btn" onclick="openProfile()">Add Cash</button>
     </div>
 
     <!-- Tokens -->
@@ -265,6 +273,20 @@ img{display:block}
       <div class="wrow" id="wrow"><input class="finp" id="wadr" placeholder="Paste Solana wallet address…"><button class="cbtn" onclick="doConnect()">Connect</button></div>
       <button class="dbtn" id="dbtn" style="display:none" onclick="doDisconnect()">Disconnect Wallet</button>
     </div>
+
+    <!-- Wallet Token Manager (visible only when wallet connected) -->
+    <div id="wtkSec" style="display:none">
+      <div style="border-top:1px solid var(--border);margin:4px 0 18px"></div>
+      <div style="font-size:15px;font-weight:700;color:var(--fg);margin-bottom:14px">Wallet Tokens</div>
+      <div class="fld">
+        <div class="flbl">Max tokens on dashboard</div>
+        <div class="lim-btns" id="limBtns"></div>
+      </div>
+      <div class="flbl" style="margin-bottom:8px">Token visibility</div>
+      <div id="wtkList" style="background:var(--bg);border-radius:12px;overflow:hidden;margin-bottom:12px"></div>
+      <button id="rmSelBtn" class="sbtn" style="display:none;background:var(--red)" onclick="rmSelectedWtk()">Remove Selected</button>
+    </div>
+
     <button class="sbtn" onclick="savePm()">Save Profile</button>
   </div>
 </div>
@@ -329,6 +351,7 @@ const S={
   wallet:null,      // HeliusPortfolio
   removed:new Set(ls('w_rem',[])),
   ovr:ls('w_ovr',{}),  // id→{balance?,pnlUsd?}
+  walletLimit:ls('w_limit',0), // 0 = show all wallet tokens
   wsStatus:'disconnected',
   pendingTx:false,
   loading:true,
@@ -337,6 +360,7 @@ const S={
 let _ws=null,_rTimer=null,_pTimer=null,_prevBal=0;
 let _editId=null,_editPrice=0,_pnlDir='pro';
 let _selEmoji=null;
+let _wtkSel=new Set(); // selected wallet tokens in manager
 
 // ─── Portfolio ────────────────────────────────────────────────────────────────
 function applyOvr(t){
@@ -357,10 +381,13 @@ function portfolio(){
     {id:'ethereum',name:'Ethereum',symbol:'ETH',image:P.ethereum?.image??'https://assets.coingecko.com/coins/images/279/large/ethereum.png', amount:S.bals.eth,   price:P.ethereum?.price??0,   value:S.bals.eth*(P.ethereum?.price??0),change24h:P.ethereum?.change24h??0,verified:true},
   ].filter(t=>!S.removed.has(t.id)).map(applyOvr);
 
-  const wal=(W?.tokens??[])
+  const walAll=(W?.tokens??[])
     .filter(t=>t.mint!==SOL_MINT&&!S.removed.has(t.mint))
-    .map(t=>({id:t.mint,name:t.name,symbol:t.symbol,image:t.logo??'',amount:t.amount,price:t.usdPrice??0,value:t.usdValue??0,change24h:t.priceChange24h??0,isWallet:true}))
+    .map(t=>({id:t.mint,name:t.name,symbol:t.symbol,image:t.logo??'',amount:t.amount,price:t.usdPrice??0,value:t.usdValue??0,change24h:t.priceChange24h??0}))
     .map(applyOvr);
+
+  // Apply display limit
+  const wal=S.walletLimit>0?walAll.slice(0,S.walletLimit):walAll;
 
   const all=[...main,...wal];
   const total=all.reduce((s,t)=>s+t.value,0);
@@ -369,7 +396,7 @@ function portfolio(){
     if(!t.change24h||!t.value)return s;
     return s+(t.value-t.value/(1+t.change24h/100));
   },0);
-  return{all,wal,total,chg};
+  return{all,wal,walAll,total,chg};
 }
 
 // ─── Counting animation ───────────────────────────────────────────────────────
@@ -390,18 +417,19 @@ function renderRow(t,last){
   const did=t.id.replace(/[^a-zA-Z0-9]/g,'_');
   const logo=t.image?`<img class="tok-av" src="${escAttr(t.image)}" alt="${escAttr(t.symbol)}" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`:'';
   const fb=`<div class="tok-fb" style="${t.image?'':'display:flex'}">${escHtml(t.symbol.slice(0,2))}</div>`;
-  const ck=t.verified?'<span class="tok-ck">✓</span>':'';
-  const wb=t.isWallet?'<span class="tok-wb">wallet</span>':'';
+  // Filled-circle checkmark matching Ionicons checkmark-circle (same as mobile app)
+  const ck=t.verified?'<svg width="13" height="13" viewBox="0 0 24 24" fill="var(--primary)" style="flex-shrink:0;margin-left:3px;display:block"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5l-4-4 1.41-1.41L10 13.67l6.59-6.59L18 8.5l-8 8z"/></svg>':'';
   const chgHtml=chgUsd!==0&&t.value>0?`<span class="tok-ch" style="color:${cc}">${fmtSign(chgUsd)}</span>`:'';
-  const div=last?'':'<div class="tok-div"></div>';
+  // Opaque wrapper (z-index:2) sits above the absolute action buttons (z-index:1)
+  // so the card colour covers the full width including the margin-left gap on the divider
+  const div=last?'':'<div style="background:var(--card);position:relative;z-index:2"><div class="tok-div"></div></div>';
   return`<div class="tok-wrap" id="W${did}">
 <div class="swipe-a sw-l" onclick="rmTok('${esc(t.id)}');rsw('${did}')"><span class="ai">🗑</span><span>Remove</span></div>
 <div class="swipe-a sw-r" onclick="opEd('${esc(t.id)}');rsw('${did}')"><span class="ai">✏️</span><span>Edit</span></div>
 <div class="tok-row" id="R${did}">
 <div style="width:44px;height:44px;position:relative;flex-shrink:0">${logo}${fb}</div>
-<div class="tok-inf"><div class="tok-nr"><span class="tok-nm">${escHtml(t.name)}</span>${ck}${wb}</div><span class="tok-amt">${fmtAmt(t.amount,t.symbol)}</span></div>
+<div class="tok-inf"><div class="tok-nr"><span class="tok-nm">${escHtml(t.name)}</span>${ck}</div><span class="tok-amt">${fmtAmt(t.amount,t.symbol)}</span></div>
 <div class="tok-vals"><span class="tok-v">${t.value>0?fmt(t.value):'—'}</span>${chgHtml}</div>
-<div class="h-acts"><button class="hb e" onclick="event.stopPropagation();opEd('${esc(t.id)}')">Edit</button><button class="hb r" onclick="event.stopPropagation();rmTok('${esc(t.id)}')">Remove</button></div>
 </div>${div}</div>`;
 }
 
@@ -433,9 +461,12 @@ function render(){
     else{hide('tsec')}
   }
 
-  // Wallet note
-  if(S.addr&&wal.length){show('wnote');$('wnote').textContent=wal.length+' token'+(wal.length!==1?'s':'')+' from connected wallet';}
-  else hide('wnote');
+  // Wallet note (show total count, indicate limit if active)
+  if(S.addr&&walAll.length){
+    show('wnote');
+    const lim=S.walletLimit>0&&walAll.length>S.walletLimit;
+    $('wnote').textContent=(lim?`Showing ${wal.length} of ${walAll.length}`:walAll.length)+' token'+(walAll.length!==1?'s':'')+' from connected wallet';
+  }else hide('wnote');
 
   // Cash card
   $('cashVal').textContent=fmt(S.bals.cash??5650);
@@ -450,16 +481,52 @@ function render(){
   $('ptx').classList.toggle('show',S.pendingTx);
 }
 
-// ─── Touch swipe ──────────────────────────────────────────────────────────────
+// ─── Touch swipe — hold 2 s to activate, then slide ─────────────────────────
 const _open=new Set();
-const AW=76,TH=36;
+const AW=76,TH=36,HOLD_MS=2000;
+const _sw={}; // did → {timer,enabled,moved}
 
-function swipe(did,tid){
+function swipe(did){
   const row=$('R'+did);if(!row)return;
-  let sx=0;
-  row.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;row.style.transition='none';_open.forEach(id=>{if(id!==did)rsw(id)});},{passive:true});
-  row.addEventListener('touchmove',e=>{const dx=e.touches[0].clientX-sx,c=Math.max(-AW,Math.min(AW,dx));row.style.transform=`translateX(${c}px)`;},{passive:true});
+  let sx=0,sy=0;
+  _sw[did]??={timer:null,enabled:false,moved:false};
+  const st=_sw[did];
+
+  row.addEventListener('touchstart',e=>{
+    sx=e.touches[0].clientX;sy=e.touches[0].clientY;
+    st.enabled=false;st.moved=false;row.style.transition='none';
+    _open.forEach(id=>{if(id!==did)rsw(id)});
+    st.timer=setTimeout(()=>{
+      if(!st.moved){
+        st.enabled=true;
+        row.classList.add('holding');
+        // tiny nudge to signal the row is ready to swipe
+        row.style.transition='transform .1s ease';
+        row.style.transform='translateX(4px)';
+        setTimeout(()=>{row.style.transition='none';row.style.transform='translateX(0)';row.classList.remove('holding');},130);
+      }
+    },HOLD_MS);
+  },{passive:true});
+
+  row.addEventListener('touchmove',e=>{
+    const dx=e.touches[0].clientX-sx,dy=e.touches[0].clientY-sy;
+    if(!st.enabled){
+      // Cancel the hold timer if the finger moves before 2 s
+      if(Math.abs(dx)>8||Math.abs(dy)>8){
+        st.moved=true;
+        if(st.timer){clearTimeout(st.timer);st.timer=null;}
+      }
+      return;
+    }
+    const c=Math.max(-AW,Math.min(AW,dx));
+    row.style.transform=`translateX(${c}px)`;
+  },{passive:true});
+
   row.addEventListener('touchend',()=>{
+    if(st.timer){clearTimeout(st.timer);st.timer=null;}
+    row.classList.remove('holding');
+    if(!st.enabled)return;
+    st.enabled=false;
     const cur=+(row.style.transform.match(/translateX\(([^p]+)px\)/)||[,0])[1];
     row.style.transition='transform .25s cubic-bezier(.25,.46,.45,.94)';
     if(cur<-TH){row.style.transform=`translateX(${-AW}px)`;_open.add(did);}
@@ -471,6 +538,55 @@ function swipe(did,tid){
 function rsw(did){
   const r=$('R'+did);if(r){r.style.transition='transform .25s cubic-bezier(.25,.46,.45,.94)';r.style.transform='translateX(0)';}
   _open.delete(did);
+  if(_sw[did]){
+    if(_sw[did].timer){clearTimeout(_sw[did].timer);_sw[did].timer=null;}
+    _sw[did].enabled=false;
+  }
+}
+
+// ─── Wallet token manager ─────────────────────────────────────────────────────
+function renderWtkMgr(){
+  const tokens=(S.wallet?.tokens??[]).filter(t=>t.mint!==SOL_MINT);
+  $('wtkSec').style.display=(S.addr&&tokens.length)?'block':'none';
+  if(!S.addr||!tokens.length)return;
+
+  // Limit buttons
+  $('limBtns').innerHTML=[0,5,10,15,20].map(n=>`<button class="lim-btn${S.walletLimit===n?' on':''}" onclick="setWlim(${n})">${n===0?'All':n}</button>`).join('');
+
+  // Token rows
+  $('wtkList').innerHTML=tokens.map((t,i)=>{
+    const id=t.mint;
+    const removed=S.removed.has(id);
+    const selected=_wtkSel.has(id);
+    const border=i<tokens.length-1?`border-bottom:1px solid var(--border)`:'';
+    const logoHtml=t.logo
+      ?`<img class="wtk-av" src="${escAttr(t.logo)}" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="wtk-fb" style="display:none">${escHtml((t.symbol||'').slice(0,2))}</div>`
+      :`<div class="wtk-fb">${escHtml((t.symbol||'').slice(0,2))}</div>`;
+    const checkIcon=removed
+      ?`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
+      :selected?`<svg width="11" height="11" viewBox="0 0 24 24" fill="var(--pf)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`:'';
+    return`<div class="wtk-row" style="${border};opacity:${removed?.5:1}" onclick="toggleWtk('${esc(id)}',${removed})">
+${logoHtml}
+<div style="flex:1;min-width:0"><div class="wtk-nm">${escHtml(t.name||t.symbol||id.slice(0,8))}</div>
+<div class="wtk-sub">${removed?'Hidden — tap to restore':t.symbol}</div></div>
+<div class="wtk-cb${selected&&!removed?' on':''}">${checkIcon}</div>
+</div>`;
+  }).join('');
+
+  const anyNonRemoved=[..._wtkSel].some(id=>!S.removed.has(id));
+  $('rmSelBtn').style.display=(_wtkSel.size&&anyNonRemoved)?'block':'none';
+  if(_wtkSel.size)$('rmSelBtn').textContent=`Remove ${[..._wtkSel].filter(id=>!S.removed.has(id)).length} Selected`;
+}
+
+function toggleWtk(id,isRemoved){
+  if(isRemoved){S.removed.delete(id);ss('w_rem',[...S.removed]);_wtkSel.delete(id);renderWtkMgr();render();return;}
+  _wtkSel.has(id)?_wtkSel.delete(id):_wtkSel.add(id);
+  renderWtkMgr();
+}
+function setWlim(n){S.walletLimit=n;ss('w_limit',n);renderWtkMgr();render();}
+function rmSelectedWtk(){
+  _wtkSel.forEach(id=>{if(!S.removed.has(id))S.removed.add(id);});
+  ss('w_rem',[...S.removed]);_wtkSel.clear();renderWtkMgr();render();
 }
 
 // ─── Token actions ────────────────────────────────────────────────────────────
@@ -577,7 +693,8 @@ function openProfile(){
   $('psol').value=S.bals.sol;$('pbtc').value=S.bals.btc;$('peth').value=S.bals.eth;$('pcash').value=S.bals.cash??5650;
   if(S.addr){show('cadr');$('cadr').textContent=S.addr;hide('wrow');show('dbtn');}
   else{hide('cadr');show('wrow');$('wadr').value='';hide('dbtn');}
-  _selEmoji=null;$('pmov').classList.remove('hide');
+  _selEmoji=null;_wtkSel.clear();renderWtkMgr();
+  $('pmov').classList.remove('hide');
 }
 function closePm(e){if(e&&e.target!==e.currentTarget)return;$('pmov').classList.add('hide');}
 function selEm(e){_selEmoji=e;document.querySelectorAll('.eb').forEach(b=>b.classList.toggle('sel',b.textContent===e));}

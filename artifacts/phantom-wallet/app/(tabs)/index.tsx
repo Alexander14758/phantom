@@ -18,7 +18,6 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { BarSpinner } from "@/components/BarSpinner";
 import { ProfileModal } from "@/components/ProfileModal";
-import { SwipeableRow } from "@/components/SwipeableRow";
 import { EditTokenModal } from "@/components/EditTokenModal";
 import { useProfile } from "@/hooks/useProfile";
 import { usePortfolio, type PortfolioToken, type WsStatus } from "@/hooks/usePortfolio";
@@ -463,21 +462,11 @@ export default function WalletScreen() {
 
             <View style={[styles.tokensList, { backgroundColor: colors.card }]}>
               {portfolio.tokens.map((token, idx) => (
-                <SwipeableRow
+                <TokenRow
                   key={token.id}
-                  onEdit={() => setEditingToken(token)}
-                  onRemove={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    portfolio.removeToken(token.id);
-                  }}
-                  editColor={colors.primary}
-                  removeColor={colors.destructive}
-                >
-                  <TokenRow
-                    token={token}
-                    isLast={idx === portfolio.tokens.length - 1}
-                  />
-                </SwipeableRow>
+                  token={token}
+                  isLast={idx === portfolio.tokens.length - 1}
+                />
               ))}
             </View>
 
@@ -488,7 +477,7 @@ export default function WalletScreen() {
               </Text>
             )}
 
-            <Pressable style={styles.manageTokens}>
+            <Pressable style={styles.manageTokens} onPress={() => setProfileOpen(true)}>
               <Text style={[styles.manageTokensText, { color: colors.primary }]}>
                 Manage token list
               </Text>
@@ -525,6 +514,10 @@ export default function WalletScreen() {
         onSetWalletLimit={portfolio.setWalletLimit}
         onRemoveWalletToken={portfolio.removeToken}
         onRestoreWalletToken={portfolio.restoreToken}
+        onEditToken={(token) => {
+          setProfileOpen(false);
+          setTimeout(() => setEditingToken(token), 260);
+        }}
       />
 
       {/* ── Edit Token Modal ── */}

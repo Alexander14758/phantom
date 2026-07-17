@@ -39,6 +39,7 @@ interface Props {
   onSetWalletLimit?: (limit: number) => void;
   onRemoveWalletToken?: (id: string) => void;
   onRestoreWalletToken?: (id: string) => void;
+  onEditToken?: (token: PortfolioToken) => void;
 }
 
 export function ProfileModal({
@@ -56,6 +57,7 @@ export function ProfileModal({
   onSetWalletLimit,
   onRemoveWalletToken,
   onRestoreWalletToken,
+  onEditToken,
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -429,6 +431,16 @@ export function ProfileModal({
                           {isHidden ? "Tap to restore" : token.symbol}
                         </Text>
                       </View>
+                      {/* Edit button — only for visible tokens */}
+                      {!isHidden && onEditToken && (
+                        <Pressable
+                          onPress={() => onEditToken(token)}
+                          style={[styles.editTokenBtn, { backgroundColor: colors.primary + "22" }]}
+                          hitSlop={6}
+                        >
+                          <Text style={[styles.editTokenBtnText, { color: colors.primary }]}>Edit</Text>
+                        </Pressable>
+                      )}
                       {/* Checkbox / restore icon */}
                       <View
                         style={[
@@ -601,5 +613,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
+  },
+  editTokenBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginRight: 8,
+    flexShrink: 0,
+  },
+  editTokenBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
   },
 });

@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #131316;
+  color: #FFFFFF;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mobile viewport */
+@media (max-width: 480px) {
+  #root {
+    max-width: 100%;
+  }
+}
+
+/* Desktop: center the 480px-wide app shell */
+@media (min-width: 481px) {
+  body {
+    background: #0D0D10;
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+  }
+  #root {
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 0 60px rgba(0,0,0,0.6);
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 0; background: transparent; }
+
+/* Number inputs — hide arrows */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
+/* Smooth scroll for modals */
+.smooth-scroll { scroll-behavior: smooth; }
+
+/* Transition helpers */
+.transition-opacity { transition: opacity 200ms ease; }
+.transition-transform { transition: transform 300ms cubic-bezier(.25,.46,.45,.94); }

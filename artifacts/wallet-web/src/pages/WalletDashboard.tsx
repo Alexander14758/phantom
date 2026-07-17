@@ -3,7 +3,6 @@ import colors from '@/lib/colors';
 import { formatChange, formatChangePct, formatCurrency } from '@/lib/format';
 import { usePortfolio, type PortfolioToken } from '@/hooks/usePortfolio';
 import { useProfile } from '@/hooks/useProfile';
-import { BarSpinner } from '@/components/BarSpinner';
 import { TokenRow } from '@/components/TokenRow';
 import { PullToRefresh } from '@/components/PullToRefresh';
 import { ProfileModal } from '@/components/ProfileModal';
@@ -113,8 +112,6 @@ export default function WalletDashboard() {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [editingToken, setEditingToken] = useState<PortfolioToken | null>(null);
-  const [spinnerVisible, setSpinnerVisible] = useState(false);
-
   // Live pulse animation for WS status dot
   const pulseRef = useRef<HTMLDivElement>(null);
   const pulseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -148,10 +145,7 @@ export default function WalletDashboard() {
   }, [portfolio.totalValue, updateBalance]);
 
   const handleRefresh = useCallback(async () => {
-    setSpinnerVisible(true);
     await portfolio.refetch();
-    await new Promise(res => setTimeout(res, 400));
-    setSpinnerVisible(false);
   }, [portfolio]);
 
   const totalChange24h = portfolio.totalChange24h;
@@ -220,12 +214,7 @@ export default function WalletDashboard() {
         </div>
 
         {/* ── Balance section ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 20px 18px' }}>
-          {/* Bar spinner (shows during manual refresh) */}
-          <div style={{ height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
-            <BarSpinner size={28} color="#FFFFFF" visible={spinnerVisible} />
-          </div>
-
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '28px 20px 18px' }}>
           <div
             style={{
               fontSize: 44, fontWeight: 700, color: colors.foreground,

@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "aHvsYHQF77TIsJeBc6SXl"
+uri = "file://wallet-web-build.zip"
+type = "unspecified"
+title = "wallet-web-build.zip"

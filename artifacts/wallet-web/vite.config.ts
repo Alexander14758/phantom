@@ -72,6 +72,15 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    // Forward /api requests to the API server (port 8080) in local dev.
+    // On Replit the platform routes /api/** directly — proxy is a no-op there.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
   },
   preview: {
     port,

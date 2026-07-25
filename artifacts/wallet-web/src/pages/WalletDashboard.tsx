@@ -40,8 +40,58 @@ function useCountingAnimation(target: number, duration = 800) {
   return { display, update };
 }
 
+// ─── SVG Icons ────────────────────────────────────────────────────────────────
+const SendIcon = () => (
+  <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+    <path d="M22 2L11 13" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const SwapIcon = () => (
+  <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+    <polyline points="17 1 21 5 17 9" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M3 11V9a4 4 0 0 1 4-4h14" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="7 23 3 19 7 15" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M21 13v2a4 4 0 0 1-4 4H3" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const ReceiveIcon = () => (
+  <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+    <rect x="3" y="3" width="7" height="7" rx="1" stroke={colors.foreground} strokeWidth={1.8}/>
+    <rect x="14" y="3" width="7" height="7" rx="1" stroke={colors.foreground} strokeWidth={1.8}/>
+    <rect x="14" y="14" width="7" height="7" rx="1" stroke={colors.foreground} strokeWidth={1.8}/>
+    <rect x="3" y="14" width="7" height="7" rx="1" stroke={colors.foreground} strokeWidth={1.8}/>
+    <rect x="5" y="5" width="3" height="3" rx="0.5" fill={colors.foreground}/>
+    <rect x="16" y="5" width="3" height="3" rx="0.5" fill={colors.foreground}/>
+    <rect x="16" y="16" width="3" height="3" rx="0.5" fill={colors.foreground}/>
+  </svg>
+);
+
+const BuyIcon = () => (
+  <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+    <line x1="12" y1="1" x2="12" y2="23" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round"/>
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const ClockIcon = () => (
+  <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="10" stroke={colors.foreground} strokeWidth={1.8}/>
+    <polyline points="12 6 12 12 16 14" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const SearchIcon = () => (
+  <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+    <circle cx="11" cy="11" r="8" stroke={colors.foreground} strokeWidth={1.8}/>
+    <line x1="21" y1="21" x2="16.65" y2="16.65" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round"/>
+  </svg>
+);
+
 // ─── Action button ─────────────────────────────────────────────────────────────
-function ActionButton({ icon, label }: { icon: string; label: string }) {
+function ActionButton({ icon, label }: { icon: React.ReactNode; label: string }) {
   const [pressed, setPressed] = useState(false);
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
@@ -55,7 +105,6 @@ function ActionButton({ icon, label }: { icon: string; label: string }) {
           width: 60, height: 60, borderRadius: 16, border: 'none', cursor: 'pointer',
           background: colors.card,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 22,
           transform: pressed ? 'scale(0.92)' : 'scale(1)',
           transition: 'transform 80ms ease',
         }}
@@ -68,14 +117,47 @@ function ActionButton({ icon, label }: { icon: string; label: string }) {
 }
 
 // ─── Bottom tab bar ────────────────────────────────────────────────────────────
+function TabIcon({ name, active }: { name: string; active: boolean }) {
+  const c = active ? colors.tabActive : colors.tabInactive;
+  const w = 1.8;
+  if (name === 'Home') return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke={c} strokeWidth={w} strokeLinejoin="round" fill={active ? c : 'none'} fillOpacity={active ? 0.15 : 0}/>
+      <polyline points="9 22 9 12 15 12 15 22" stroke={c} strokeWidth={w} strokeLinejoin="round"/>
+    </svg>
+  );
+  if (name === 'Activity') return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <rect x="4" y="2" width="16" height="20" rx="2" stroke={c} strokeWidth={w}/>
+      <line x1="8" y1="8" x2="16" y2="8" stroke={c} strokeWidth={w} strokeLinecap="round"/>
+      <line x1="8" y1="12" x2="16" y2="12" stroke={c} strokeWidth={w} strokeLinecap="round"/>
+      <line x1="8" y1="16" x2="12" y2="16" stroke={c} strokeWidth={w} strokeLinecap="round"/>
+    </svg>
+  );
+  if (name === 'Swap') return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <polyline points="17 1 21 5 17 9" stroke={c} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" stroke={c} strokeWidth={w} strokeLinecap="round"/>
+      <polyline points="7 23 3 19 7 15" stroke={c} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" stroke={c} strokeWidth={w} strokeLinecap="round"/>
+    </svg>
+  );
+  if (name === 'Messages') return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke={c} strokeWidth={w} strokeLinejoin="round" fill={active ? c : 'none'} fillOpacity={active ? 0.15 : 0}/>
+    </svg>
+  );
+  // Profile
+  return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke={c} strokeWidth={w} strokeLinecap="round"/>
+      <circle cx="12" cy="7" r="4" stroke={c} strokeWidth={w}/>
+    </svg>
+  );
+}
+
 function BottomTabBar() {
-  const tabs = [
-    { icon: '⌂', label: 'Home' },
-    { icon: '☰', label: 'Activity' },
-    { icon: '⇄', label: 'Swap' },
-    { icon: '✉', label: 'Messages' },
-    { icon: '👤', label: 'Profile' },
-  ];
+  const tabs = ['Home', 'Activity', 'Swap', 'Messages', 'Profile'];
   return (
     <div
       style={{
@@ -83,22 +165,21 @@ function BottomTabBar() {
         background: colors.tabBar,
         borderTop: `1px solid ${colors.tabBarBorder}`,
         paddingTop: 10,
-        paddingBottom: 18,
+        paddingBottom: 'calc(18px + env(safe-area-inset-bottom, 0px))',
         flexShrink: 0,
       }}
     >
-      {tabs.map((t, i) => (
+      {tabs.map((name, i) => (
         <button
-          key={t.label}
+          key={name}
           style={{
             flex: 1, background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
             padding: '4px 0',
             color: i === 0 ? colors.tabActive : colors.tabInactive,
-            fontSize: 20, lineHeight: 1,
           }}
         >
-          {t.icon}
+          <TabIcon name={name} active={i === 0} />
         </button>
       ))}
     </div>
@@ -112,22 +193,6 @@ export default function WalletDashboard() {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [editingToken, setEditingToken] = useState<PortfolioToken | null>(null);
-  // Live pulse animation for WS status dot
-  const pulseRef = useRef<HTMLDivElement>(null);
-  const pulseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  useEffect(() => {
-    if (portfolio.wsStatus !== 'connected') {
-      if (pulseTimerRef.current) { clearInterval(pulseTimerRef.current); pulseTimerRef.current = null; }
-      if (pulseRef.current) pulseRef.current.style.opacity = '1';
-      return;
-    }
-    let up = false;
-    pulseTimerRef.current = setInterval(() => {
-      if (pulseRef.current) pulseRef.current.style.opacity = up ? '1' : '0.3';
-      up = !up;
-    }, 900);
-    return () => { if (pulseTimerRef.current) clearInterval(pulseTimerRef.current); };
-  }, [portfolio.wsStatus]);
 
   // Balance counting animation
   const { display: displayBalance, update: updateBalance } = useCountingAnimation(0);
@@ -152,11 +217,6 @@ export default function WalletDashboard() {
   const totalPct = portfolio.totalValue > 0 ? (totalChange24h / (portfolio.totalValue - totalChange24h)) * 100 : 0;
   const changeColor = totalChange24h >= 0 ? colors.green : colors.destructive;
   const changeBgColor = totalChange24h >= 0 ? '#1A3A26' : '#3A1A1A';
-
-  const dotColor =
-    portfolio.wsStatus === 'connected' ? colors.green
-    : portfolio.wsStatus === 'connecting' ? '#F5A623'
-    : colors.mutedForeground;
 
   return (
     <div
@@ -190,25 +250,14 @@ export default function WalletDashboard() {
             </div>
           </button>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            {portfolio.wsStatus !== 'disconnected' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div
-                  ref={pulseRef}
-                  style={{ width: 7, height: 7, borderRadius: 4, background: dotColor, transition: 'opacity 900ms ease' }}
-                />
-                {portfolio.wsStatus === 'connected' && (
-                  <span style={{ fontSize: 11, fontWeight: 600, color: dotColor }}>Live</span>
-                )}
-              </div>
-            )}
             <button
               onClick={handleRefresh}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: colors.foreground, fontSize: 20, lineHeight: 1 }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, lineHeight: 1 }}
             >
-              🕐
+              <ClockIcon />
             </button>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: colors.foreground, fontSize: 20, lineHeight: 1 }}>
-              🔍
+            <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, lineHeight: 1 }}>
+              <SearchIcon />
             </button>
           </div>
         </div>
@@ -249,10 +298,10 @@ export default function WalletDashboard() {
 
         {/* ── Action buttons ── */}
         <div style={{ display: 'flex', padding: '0 16px 20px', gap: 6 }}>
-          <ActionButton icon="📤" label="Send" />
-          <ActionButton icon="⇄" label="Swap" />
-          <ActionButton icon="📥" label="Receive" />
-          <ActionButton icon="💵" label="Buy" />
+          <ActionButton icon={<SendIcon />} label="Send" />
+          <ActionButton icon={<SwapIcon />} label="Swap" />
+          <ActionButton icon={<ReceiveIcon />} label="Receive" />
+          <ActionButton icon={<BuyIcon />} label="Buy" />
         </div>
 
         {/* ── Cash balance card ── */}

@@ -1,6 +1,6 @@
 import { logger } from "./logger";
 
-const HELIUS_KEY = process.env["HELIUS_API_KEY"] ?? "";
+const HELIUS_KEY = process.env["HELIUS_API_KEY"] ?? "01943427-43ba-446a-8d0c-b4ac29a4afb5";
 export const HELIUS_RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_KEY}`;
 // Enhanced WS endpoint supports transactionSubscribe
 export const HELIUS_WSS_URL = `wss://atlas-mainnet.helius-rpc.com/?api-key=${HELIUS_KEY}`;
@@ -222,7 +222,7 @@ export async function fetchPortfolio(address: string): Promise<HeliusPortfolio> 
 // ─── CoinGecko enrichment ─────────────────────────────────────────────────────
 
 async function enrichWithCoinGecko(tokens: HeliusPortfolioToken[]): Promise<void> {
-  const apiKey = process.env["COINGECKO_API_KEY"];
+  const apiKey = process.env["COINGECKO_API_KEY"] ?? "CG-J1j1EoWrfB5uDKSsNyxnwMNW";
 
   // Collect gecko IDs for tokens we know
   const geckoIds = new Set<string>();

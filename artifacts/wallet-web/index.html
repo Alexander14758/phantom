@@ -2,18 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>Phantom Wallet Web</title>
-    <meta name="description" content="Phantom Wallet Web — built on Replit. Update this description to reflect the app." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Phantom</title>
+    <meta name="description" content="Phantom Wallet — manage your crypto portfolio" />
     <meta name="robots" content="index, follow" />
-    <meta property="og:title" content="Phantom Wallet Web" />
-    <meta property="og:description" content="Phantom Wallet Web — built on Replit. Update this description to reflect the app." />
+
+    <!-- PWA / iOS Home Screen -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Phantom" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#1A1B23" />
+    <link rel="manifest" href="/wallet-web/manifest.json" />
+    <link rel="apple-touch-icon" href="/wallet-web/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" href="/wallet-web/icon.png" />
+
+    <!-- OG / Twitter -->
+    <meta property="og:title" content="Phantom Wallet" />
+    <meta property="og:description" content="Phantom Wallet — manage your crypto portfolio" />
     <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Phantom Wallet Web" />
-    <meta name="twitter:description" content="Phantom Wallet Web — built on Replit. Update this description to reflect the app." />
-    <link rel="icon" type="image/png" href="/wallet-web/favicon.png" />
-    <link rel="apple-touch-icon" href="/wallet-web/favicon.png" />
+    <meta name="twitter:card" content="summary" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -21,5 +30,12 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/wallet-web/sw.js');
+        });
+      }
+    </script>
   </body>
 </html>

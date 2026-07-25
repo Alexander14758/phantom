@@ -61,3 +61,9 @@ localPort = 8081
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+COINGECKO_API_KEY = "CG-J1j1EoWrfB5uDKSsNyxnwMNW"
+HELIUS_API_KEY = "01943427-43ba-446a-8d0c-b4ac29a4afb5"

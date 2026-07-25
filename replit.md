@@ -1,15 +1,18 @@
-# [Project name]
+# Phantom Wallet
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A Phantom-style crypto wallet app with live Solana wallet data, real-time price tracking, and a WebSocket-powered transaction feed.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- **API Server** — workflow `API Server` runs `PORT=8080 pnpm --filter @workspace/api-server run dev` (port 8080)
+- **Web Wallet** — workflow `Wallet Web` runs `PORT=5173 pnpm --filter @workspace/wallet-web run dev` (port 5173)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL` — Postgres connection string (runtime-managed by Replit, no manual setup needed)
+- Optional env: `HELIUS_API_KEY` — live Solana wallet data (free at helius.dev)
+- Optional env: `COINGECKO_API_KEY` — live crypto prices (free at coingecko.com/en/api)
+- `SESSION_SECRET` — already configured as a Replit Secret
 
 ## Stack
 

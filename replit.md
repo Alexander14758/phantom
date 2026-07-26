@@ -1,48 +1,48 @@
 # Phantom Wallet
 
-A Phantom-style crypto wallet app with live Solana wallet data, real-time price tracking, and a WebSocket-powered transaction feed.
-
-## Run & Operate
-
-- **API Server** — workflow `API Server` runs `PORT=8080 pnpm --filter @workspace/api-server run dev` (port 8080)
-- **Web Wallet** — workflow `Wallet Web` runs `PORT=5173 pnpm --filter @workspace/wallet-web run dev` (port 5173)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string (runtime-managed by Replit, no manual setup needed)
-- Optional env: `HELIUS_API_KEY` — live Solana wallet data (free at helius.dev)
-- Optional env: `COINGECKO_API_KEY` — live crypto prices (free at coingecko.com/en/api)
-- `SESSION_SECRET` — already configured as a Replit Secret
+A Solana crypto wallet web app with real-time portfolio tracking, live crypto prices, and a mobile-first PWA experience.
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+| Layer | Tech |
+|-------|------|
+| Frontend | React + Vite + Tailwind CSS |
+| Backend | Express (Node.js) + WebSocket |
+| Solana data | Helius DAS API |
+| Crypto prices | CoinGecko API |
+| Mobile app | Expo (React Native) |
 
-## Where things live
+## Running on Replit
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+Two workflows run automatically:
 
-## Architecture decisions
+- **`artifacts/api-server: API Server`** — Express backend on port 8080 (Helius + CoinGecko integration)
+- **`artifacts/wallet-web: web`** — Vite dev server on port 20830, preview path `/wallet-web/`
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+## API Keys
 
-## Product
+Keys are hardcoded as fallbacks in:
+- `artifacts/api-server/src/lib/helius.ts` — `HELIUS_API_KEY`
+- `artifacts/api-server/src/lib/helius.ts` — `COINGECKO_API_KEY` (enrichment)
+- `artifacts/api-server/src/routes/prices.ts` — `COINGECKO_API_KEY` (market prices)
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Environment variables override the hardcoded values if set.
 
-## User preferences
+## Project Structure
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+```
+artifacts/
+  api-server/    # Express backend (port 8080)
+  wallet-web/    # React/Vite frontend (port 20830)
+  phantom-wallet/ # Expo mobile app (optional)
+lib/
+  api-spec/      # Shared API type definitions
+  api-zod/       # Zod schemas
+  api-client-react/ # React Query hooks
+  db/            # Drizzle ORM schema
+```
 
-## Gotchas
+## User Preferences
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- API keys should be hardcoded directly in source files (not hidden behind env vars).
+- Mobile-first layout: web app is designed to fit phone screens, added to home screen as a PWA.

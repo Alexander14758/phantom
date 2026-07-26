@@ -2,36 +2,36 @@
   "name": "Phantom Wallet",
   "short_name": "Phantom",
   "description": "Phantom Wallet — manage your crypto portfolio",
-  "start_url": "/wallet-web/",
-  "scope": "/wallet-web/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#131316",
   "theme_color": "#131316",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/wallet-web/favicon-16.png",
+      "src": "/favicon-16.png",
       "sizes": "16x16",
       "type": "image/png"
     },
     {
-      "src": "/wallet-web/favicon-32.png",
+      "src": "/favicon-32.png",
       "sizes": "32x32",
       "type": "image/png"
     },
     {
-      "src": "/wallet-web/apple-touch-icon.png",
+      "src": "/apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png"
     },
     {
-      "src": "/wallet-web/icon-192.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/wallet-web/icon-512.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

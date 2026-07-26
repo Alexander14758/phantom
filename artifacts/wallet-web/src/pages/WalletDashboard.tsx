@@ -43,36 +43,36 @@ function useCountingAnimation(target: number, duration = 800) {
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 const SendIcon = () => (
   <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-    <path d="M22 2L11 13" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M22 2L11 13" stroke={colors.primary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke={colors.primary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
 const SwapIcon = () => (
   <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-    <polyline points="17 1 21 5 17 9" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M3 11V9a4 4 0 0 1 4-4h14" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
-    <polyline points="7 23 3 19 7 15" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M21 13v2a4 4 0 0 1-4 4H3" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="17 1 21 5 17 9" stroke={colors.primary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M3 11V9a4 4 0 0 1 4-4h14" stroke={colors.primary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="7 23 3 19 7 15" stroke={colors.primary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M21 13v2a4 4 0 0 1-4 4H3" stroke={colors.primary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
 const ReceiveIcon = () => (
   <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-    <rect x="3" y="3" width="7" height="7" rx="1" stroke={colors.foreground} strokeWidth={1.8}/>
-    <rect x="14" y="3" width="7" height="7" rx="1" stroke={colors.foreground} strokeWidth={1.8}/>
-    <rect x="14" y="14" width="7" height="7" rx="1" stroke={colors.foreground} strokeWidth={1.8}/>
-    <rect x="3" y="14" width="7" height="7" rx="1" stroke={colors.foreground} strokeWidth={1.8}/>
-    <rect x="5" y="5" width="3" height="3" rx="0.5" fill={colors.foreground}/>
-    <rect x="16" y="5" width="3" height="3" rx="0.5" fill={colors.foreground}/>
-    <rect x="16" y="16" width="3" height="3" rx="0.5" fill={colors.foreground}/>
+    <rect x="3" y="3" width="7" height="7" rx="1" stroke={colors.primary} strokeWidth={1.8}/>
+    <rect x="14" y="3" width="7" height="7" rx="1" stroke={colors.primary} strokeWidth={1.8}/>
+    <rect x="14" y="14" width="7" height="7" rx="1" stroke={colors.primary} strokeWidth={1.8}/>
+    <rect x="3" y="14" width="7" height="7" rx="1" stroke={colors.primary} strokeWidth={1.8}/>
+    <rect x="5" y="5" width="3" height="3" rx="0.5" fill={colors.primary}/>
+    <rect x="16" y="5" width="3" height="3" rx="0.5" fill={colors.primary}/>
+    <rect x="16" y="16" width="3" height="3" rx="0.5" fill={colors.primary}/>
   </svg>
 );
 
 const BuyIcon = () => (
   <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-    <line x1="12" y1="1" x2="12" y2="23" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round"/>
-    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke={colors.foreground} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
+    <line x1="12" y1="1" x2="12" y2="23" stroke={colors.primary} strokeWidth={1.8} strokeLinecap="round"/>
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke={colors.primary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 

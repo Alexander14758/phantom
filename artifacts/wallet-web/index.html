@@ -13,14 +13,14 @@
     <meta name="apple-mobile-web-app-title" content="Phantom" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#1A1B23" />
-    <link rel="manifest" href="/wallet-web/manifest.json" />
+    <link rel="manifest" href="/manifest.json" />
     <!-- Apple Home Screen icon (180×180 is the required size for modern iPhones) -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/wallet-web/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <!-- Browser tab favicons — .ico is highest priority & most compatible -->
-    <link rel="shortcut icon" href="/wallet-web/favicon.ico" />
-    <link rel="icon" type="image/x-icon" href="/wallet-web/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/wallet-web/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/wallet-web/favicon-16.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
 
     <!-- OG / Twitter -->
     <meta property="og:title" content="Phantom Wallet" />
@@ -38,7 +38,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/wallet-web/sw.js');
+          navigator.serviceWorker.register('/sw.js');
         });
       }
     </script>

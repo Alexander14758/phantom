@@ -165,7 +165,7 @@ function BottomTabBar() {
         background: colors.tabBar,
         borderTop: `1px solid ${colors.tabBarBorder}`,
         paddingTop: 10,
-        paddingBottom: 'calc(18px + env(safe-area-inset-bottom, 0px))',
+        paddingBottom: 'calc(6px + env(safe-area-inset-bottom, 0px))',
         flexShrink: 0,
       }}
     >

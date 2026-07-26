@@ -80,8 +80,14 @@ function getWsUrl(): string {
   return `${proto}//${window.location.host}/api/wallet-ws`;
 }
 
+const COINGECKO_API_KEY = "CG-J1j1EoWrfB5uDKSsNyxnwMNW";
+
 async function fetchPrices(): Promise<CoinMarketData[]> {
-  const res = await fetch('/api/prices');
+  const url =
+    'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana&order=market_cap_desc&price_change_percentage=24h';
+  const res = await fetch(url, {
+    headers: { 'x-cg-demo-api-key': COINGECKO_API_KEY },
+  });
   if (!res.ok) throw new Error('Failed to fetch prices');
   return res.json() as Promise<CoinMarketData[]>;
 }

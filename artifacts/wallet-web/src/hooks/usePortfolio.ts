@@ -9,6 +9,7 @@ const STORE = {
   REMOVED: '@portfolio/removed_mints',
   OVERRIDES: '@portfolio/token_overrides',
   WALLET_LIMIT: '@portfolio/wallet_limit',
+  CUSTOM_TOKENS: '@portfolio/custom_tokens',
 };
 
 const FALLBACK_IMAGES: Record<string, string> = {
@@ -56,6 +57,7 @@ export interface PortfolioToken {
   pnlUsdOverride?: number;
   verified: boolean;
   isWallet?: boolean;
+  isCustom?: boolean;
 }
 
 export interface TokenOverride {
@@ -63,11 +65,15 @@ export interface TokenOverride {
   pnlUsd?: number;
 }
 
-export type WsStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
-
-function getApiBase(): string {
-  return ''; // same origin, relative paths
+export interface CustomToken {
+  id: string;
+  name: string;
+  symbol: string;
+  amount: number;
+  priceUsd: number;
 }
+
+export type WsStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 function getWsUrl(): string {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -108,6 +114,9 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
   const [walletDisplayLimit, setWalletDisplayLimitState] = useState<number>(
     () => lsGet<number>(STORE.WALLET_LIMIT, 0)
   );
+  const [customTokens, setCustomTokens] = useState<CustomToken[]>(
+    () => lsGet<CustomToken[]>(STORE.CUSTOM_TOKENS, [])
+  );
 
   const removeToken = useCallback((id: string) => {
     setRemovedMints(prev => {
@@ -136,6 +145,31 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
     setTokenOverrides(prev => {
       const next = { ...prev, [id]: { balance, pnlUsd: pnlUsd ?? undefined } };
       lsSet(STORE.OVERRIDES, next);
+      return next;
+    });
+  }, []);
+
+  const addCustomToken = useCallback((token: Omit<CustomToken, 'id'>) => {
+    const newToken: CustomToken = { ...token, id: `custom_${Date.now()}` };
+    setCustomTokens(prev => {
+      const next = [...prev, newToken];
+      lsSet(STORE.CUSTOM_TOKENS, next);
+      return next;
+    });
+  }, []);
+
+  const deleteCustomToken = useCallback((id: string) => {
+    setCustomTokens(prev => {
+      const next = prev.filter(t => t.id !== id);
+      lsSet(STORE.CUSTOM_TOKENS, next);
+      return next;
+    });
+  }, []);
+
+  const updateCustomToken = useCallback((id: string, updates: Partial<Omit<CustomToken, 'id'>>) => {
+    setCustomTokens(prev => {
+      const next = prev.map(t => t.id === id ? { ...t, ...updates } : t);
+      lsSet(STORE.CUSTOM_TOKENS, next);
       return next;
     });
   }, []);
@@ -244,7 +278,23 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
   const walletTokensFiltered = allWalletTokens.filter(t => !removedMints.has(t.id)).map(applyOverride);
   const walletTokens = walletDisplayLimit > 0 ? walletTokensFiltered.slice(0, walletDisplayLimit) : walletTokensFiltered;
 
-  const allTokens = [...mainTokens, ...walletTokens];
+  // Custom tokens → PortfolioToken shape
+  const customPortfolioTokens: PortfolioToken[] = customTokens
+    .filter(t => !removedMints.has(t.id))
+    .map((t): PortfolioToken => ({
+      id: t.id,
+      name: t.name,
+      symbol: t.symbol.toUpperCase(),
+      image: '',
+      amount: t.amount,
+      price: t.priceUsd,
+      value: t.amount * t.priceUsd,
+      change24h: 0,
+      verified: false,
+      isCustom: true,
+    }));
+
+  const allTokens = [...mainTokens, ...walletTokens, ...customPortfolioTokens];
   const totalValue = allTokens.reduce((s, t) => s + t.value, 0);
   const totalChange24h = allTokens.reduce((sum, t) => {
     if (t.pnlUsdOverride !== undefined) return sum + t.pnlUsdOverride;
@@ -266,9 +316,12 @@ export function usePortfolio(balances: Balances, connectedAddress?: string | nul
 
   return {
     tokens: allTokens, mainTokens, walletTokens, allWalletTokens,
+    customTokens,
     totalValue, totalChange24h, priceMap,
     isLoading: pricesLoading, pricesError, wsStatus, pendingTx,
     removedMints, walletDisplayLimit,
-    removeToken, restoreToken, setWalletLimit, editToken, refetch,
+    removeToken, restoreToken, setWalletLimit, editToken,
+    addCustomToken, deleteCustomToken, updateCustomToken,
+    refetch,
   };
 }

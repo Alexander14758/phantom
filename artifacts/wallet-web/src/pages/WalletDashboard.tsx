@@ -400,6 +400,10 @@ export default function WalletDashboard() {
         onRemoveWalletToken={portfolio.removeToken}
         onRestoreWalletToken={portfolio.restoreToken}
         onEditToken={token => { setProfileOpen(false); setTimeout(() => setEditingToken(token), 200); }}
+        customTokens={portfolio.customTokens}
+        onAddCustomToken={portfolio.addCustomToken}
+        onDeleteCustomToken={portfolio.deleteCustomToken}
+        onUpdateCustomToken={portfolio.updateCustomToken}
       />
 
       <EditTokenModal

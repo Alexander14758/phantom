@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import colors from '@/lib/colors';
 import type { Balances, ConnectedWallet, Profile } from '@/hooks/useProfile';
-import type { PortfolioToken } from '@/hooks/usePortfolio';
+import type { CustomToken, PortfolioToken } from '@/hooks/usePortfolio';
 
 const EMOJI_AVATARS = [
   '🔮','👾','🦊','🐉','🦁','🐺','🎭','🌙',
@@ -25,6 +25,11 @@ interface Props {
   onRemoveWalletToken?: (id: string) => void;
   onRestoreWalletToken?: (id: string) => void;
   onEditToken?: (token: PortfolioToken) => void;
+  // Custom tokens
+  customTokens?: CustomToken[];
+  onAddCustomToken?: (t: Omit<CustomToken, 'id'>) => void;
+  onDeleteCustomToken?: (id: string) => void;
+  onUpdateCustomToken?: (id: string, updates: Partial<Omit<CustomToken, 'id'>>) => void;
 }
 
 const fld: React.CSSProperties = {
@@ -47,11 +52,106 @@ const clbl: React.CSSProperties = {
   color: colors.mutedForeground, marginBottom: 12, textTransform: 'uppercase',
 };
 
+// Trash icon
+function TrashIcon() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.destructive} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6"/>
+      <path d="M19 6l-1 14H6L5 6"/>
+      <path d="M10 11v6M14 11v6"/>
+      <path d="M9 6V4h6v2"/>
+    </svg>
+  );
+}
+
+// Plus icon
+function PlusIcon() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  );
+}
+
+// Inline add-token form
+function AddTokenForm({ onAdd }: { onAdd: (t: Omit<CustomToken, 'id'>) => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [symbol, setSymbol] = useState('');
+  const [amount, setAmount] = useState('');
+  const [price, setPrice] = useState('');
+  const [err, setErr] = useState('');
+
+  const reset = () => { setName(''); setSymbol(''); setAmount(''); setPrice(''); setErr(''); };
+
+  const submit = () => {
+    if (!name.trim()) { setErr('Token name is required.'); return; }
+    if (!symbol.trim()) { setErr('Symbol is required.'); return; }
+    const amt = parseFloat(amount);
+    if (!amount || isNaN(amt) || amt < 0) { setErr('Enter a valid amount (e.g. 100).'); return; }
+    const prc = price === '' ? 0 : parseFloat(price);
+    if (isNaN(prc) || prc < 0) { setErr('Enter a valid price (e.g. 0.05) or leave blank.'); return; }
+    onAdd({ name: name.trim(), symbol: symbol.trim().toUpperCase(), amount: amt, priceUsd: prc });
+    reset();
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          width: '100%', padding: '12px 0', borderRadius: 12, border: `1.5px dashed ${colors.primary}40`,
+          background: 'none', color: colors.primary, fontSize: 14, fontWeight: 600,
+          fontFamily: 'inherit', cursor: 'pointer', marginTop: 10,
+        }}
+      >
+        <PlusIcon /> Add Token
+      </button>
+    );
+  }
+
+  const inp: React.CSSProperties = {
+    width: '100%', boxSizing: 'border-box', padding: '11px 12px', borderRadius: 10,
+    border: `1px solid ${colors.border}`, background: colors.secondary,
+    color: colors.foreground, fontSize: 14, fontFamily: 'inherit', outline: 'none',
+    marginBottom: 8,
+  };
+
+  return (
+    <div style={{ marginTop: 10, background: colors.secondary, borderRadius: 12, padding: 14 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: colors.foreground, marginBottom: 10 }}>New Token</div>
+      <input style={inp} placeholder="Token name (e.g. Dogecoin)" value={name} onChange={e => { setName(e.target.value); setErr(''); }} />
+      <input style={inp} placeholder="Symbol (e.g. DOGE)" value={symbol} onChange={e => { setSymbol(e.target.value); setErr(''); }} />
+      <input style={inp} type="number" placeholder="Amount you hold (e.g. 1000)" value={amount} onChange={e => { setAmount(e.target.value); setErr(''); }} />
+      <input style={{ ...inp, marginBottom: 0 }} type="number" placeholder="Price per token in USD (optional)" value={price} onChange={e => { setPrice(e.target.value); setErr(''); }} />
+      {err && <div style={{ fontSize: 12, color: colors.destructive, marginTop: 6 }}>{err}</div>}
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <button
+          onClick={() => { reset(); setOpen(false); }}
+          style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: `1px solid ${colors.border}`, background: 'none', color: colors.mutedForeground, fontSize: 14, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer' }}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={submit}
+          style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', background: colors.primary, color: colors.primaryForeground, fontSize: 14, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}
+        >
+          Add Token
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function ProfileModal({
   visible, onClose, profile, balances, connectedWallet,
   onSaveProfile, onSaveBalances, onConnectWallet,
   allWalletTokens = [], removedMints = new Set(), walletDisplayLimit = 0,
   onSetWalletLimit, onRemoveWalletToken, onRestoreWalletToken, onEditToken,
+  customTokens = [], onAddCustomToken, onDeleteCustomToken, onUpdateCustomToken,
 }: Props) {
   const [name, setName] = useState(profile.name);
   const [username, setUsername] = useState(profile.username);
@@ -235,6 +335,57 @@ export function ProfileModal({
             ))}
           </div>
 
+          {/* ── CUSTOM TOKENS ── */}
+          <div style={card}>
+            <div style={clbl}>Custom Tokens</div>
+            <div style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: 12 }}>
+              Add any token manually — it will appear on your dashboard.
+            </div>
+
+            {customTokens.length > 0 && (
+              <div style={{ background: colors.secondary, borderRadius: 12, overflow: 'hidden', marginBottom: 0 }}>
+                {customTokens.map((token, idx) => (
+                  <div key={token.id}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
+                      {/* Avatar circle */}
+                      <div style={{ width: 36, height: 36, borderRadius: 18, background: colors.primary + '30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: colors.primary }}>
+                          {token.symbol.slice(0, 3)}
+                        </span>
+                      </div>
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: colors.foreground, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {token.name}
+                        </div>
+                        <div style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 1 }}>
+                          {token.amount} {token.symbol}
+                          {token.priceUsd > 0 && ` · $${token.priceUsd.toLocaleString()} / token`}
+                        </div>
+                      </div>
+                      {/* Edit inline */}
+                      <EditCustomTokenInline
+                        token={token}
+                        onUpdate={(u) => onUpdateCustomToken?.(token.id, u)}
+                      />
+                      {/* Delete */}
+                      <button
+                        onClick={() => onDeleteCustomToken?.(token.id)}
+                        style={{ background: colors.destructive + '18', border: 'none', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                        title="Remove token"
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
+                    {idx < customTokens.length - 1 && <div style={{ height: 1, background: colors.border, marginLeft: 60 }} />}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {onAddCustomToken && <AddTokenForm onAdd={onAddCustomToken} />}
+          </div>
+
           {/* Connect wallet */}
           <div style={card}>
             <div style={clbl}>Connect Wallet</div>
@@ -286,7 +437,6 @@ export function ProfileModal({
             <div style={card}>
               <div style={clbl}>Wallet Tokens</div>
 
-              {/* Display limit */}
               <div style={{ fontSize: 15, color: colors.mutedForeground, marginBottom: 10 }}>Max tokens on dashboard</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
                 {[0, 5, 10, 15, 20].map(n => (
@@ -305,7 +455,6 @@ export function ProfileModal({
                 ))}
               </div>
 
-              {/* Token list header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <span style={{ fontSize: 15, color: colors.mutedForeground }}>Token visibility ({allWalletTokens.length})</span>
                 {selectedIds.size > 0 && (
@@ -318,7 +467,6 @@ export function ProfileModal({
                 )}
               </div>
 
-              {/* Token rows */}
               <div style={{ background: colors.secondary, borderRadius: 12, overflow: 'hidden' }}>
                 {allWalletTokens.map((token, idx) => {
                   const isHidden = removedMints.has(token.id);
@@ -348,7 +496,6 @@ export function ProfileModal({
                           <div style={{ fontSize: 14, fontWeight: 500, color: colors.foreground, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{token.name}</div>
                           <div style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 1 }}>{isHidden ? 'Tap to restore' : token.symbol}</div>
                         </div>
-                        {/* Edit button */}
                         {!isHidden && onEditToken && (
                           <button
                             onClick={e => { e.stopPropagation(); onEditToken(token); }}
@@ -357,7 +504,6 @@ export function ProfileModal({
                             Edit
                           </button>
                         )}
-                        {/* Checkbox */}
                         <div
                           style={{
                             width: 20, height: 20, borderRadius: 10, flexShrink: 0,
@@ -379,41 +525,10 @@ export function ProfileModal({
                   );
                 })}
               </div>
-
-              {/* Edit manual tokens (SOL/BTC/ETH) */}
-              {onEditToken && (
-                <div style={{ marginTop: 18 }}>
-                  <div style={{ fontSize: 15, color: colors.mutedForeground, marginBottom: 10 }}>Manual holdings</div>
-                  <div style={{ background: colors.secondary, borderRadius: 12, overflow: 'hidden' }}>
-                    {[
-                      { id: 'solana', name: 'Solana', symbol: 'SOL' },
-                      { id: 'bitcoin', name: 'Bitcoin', symbol: 'BTC' },
-                      { id: 'ethereum', name: 'Ethereum', symbol: 'ETH' },
-                    ].map((item, idx, arr) => (
-                      <div key={item.id}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px' }}>
-                          <span style={{ fontSize: 14, fontWeight: 500, color: colors.foreground }}>{item.name} ({item.symbol})</span>
-                          <button
-                            onClick={() => {
-                              // Find the token in allWalletTokens or create a stub for manual ones
-                              const stub: PortfolioToken = { id: item.id, name: item.name, symbol: item.symbol, image: '', amount: 0, price: 0, value: 0, change24h: 0, verified: true };
-                              onEditToken(stub);
-                            }}
-                            style={{ background: colors.primary + '20', border: 'none', borderRadius: 8, padding: '5px 10px', color: colors.primary, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}
-                          >
-                            Edit
-                          </button>
-                        </div>
-                        {idx < arr.length - 1 && <div style={{ height: 1, background: colors.border }} />}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
-          {/* Edit tokens section (when no wallet connected) */}
+          {/* Manual holdings edit (SOL/BTC/ETH) — shown only when no wallet connected */}
           {allWalletTokens.length === 0 && onEditToken && (
             <div style={card}>
               <div style={clbl}>Manual Holdings</div>
@@ -445,6 +560,57 @@ export function ProfileModal({
 
         </div>
       </div>
+    </div>
+  );
+}
+
+// Inline edit for amount/price of a custom token
+function EditCustomTokenInline({
+  token,
+  onUpdate,
+}: {
+  token: CustomToken;
+  onUpdate: (u: Partial<Omit<CustomToken, 'id'>>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState(String(token.amount));
+  const [price, setPrice] = useState(String(token.priceUsd));
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        style={{ background: colors.primary + '20', border: 'none', borderRadius: 8, padding: '5px 10px', color: colors.primary, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', flexShrink: 0 }}
+      >
+        Edit
+      </button>
+    );
+  }
+
+  const save = () => {
+    const amt = parseFloat(amount);
+    const prc = parseFloat(price);
+    if (!isNaN(amt) && amt >= 0) onUpdate({ amount: amt });
+    if (!isNaN(prc) && prc >= 0) onUpdate({ priceUsd: prc });
+    setOpen(false);
+  };
+
+  const inp2: React.CSSProperties = {
+    width: 80, padding: '6px 8px', borderRadius: 8,
+    border: `1px solid ${colors.border}`, background: colors.secondary,
+    color: colors.foreground, fontSize: 13, fontFamily: 'inherit', outline: 'none', textAlign: 'right',
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+      <input style={inp2} type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Amt" />
+      <input style={inp2} type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="$" />
+      <button
+        onClick={save}
+        style={{ background: colors.primary, border: 'none', borderRadius: 8, padding: '6px 10px', color: colors.primaryForeground, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}
+      >
+        ✓
+      </button>
     </div>
   );
 }

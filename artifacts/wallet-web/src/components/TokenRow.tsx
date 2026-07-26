@@ -14,17 +14,17 @@ function SolanaBadge() {
     <div
       style={{
         position: 'absolute', bottom: -1, right: -1,
-        width: 17, height: 17, borderRadius: '50%',
+        width: 18, height: 18, borderRadius: '50%',
         background: '#fff', border: '1.5px solid #1A1B23',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden', flexShrink: 0,
       }}
     >
-      {/* Solana "S" mark — 3 diagonal stripes */}
-      <svg width="11" height="9" viewBox="0 0 22 17" fill="none">
-        <path d="M3.2 12.4h14.2a.5.5 0 0 1 .35.85l-2.1 2.1a.5.5 0 0 1-.35.15H1.1a.5.5 0 0 1-.35-.85l2.1-2.1a.5.5 0 0 1 .35-.15z" fill="#9945FF"/>
-        <path d="M1.1 7h14.2a.5.5 0 0 1 .35.15l2.1 2.1a.5.5 0 0 1-.35.85H3.2a.5.5 0 0 1-.35-.15L.75 7.85A.5.5 0 0 1 1.1 7z" fill="#14F195"/>
-        <path d="M3.2 1.5h14.2a.5.5 0 0 1 .35.85l-2.1 2.1a.5.5 0 0 1-.35.15H1.1a.5.5 0 0 1-.35-.85l2.1-2.1a.5.5 0 0 1 .35-.15z" fill="#9945FF"/>
+      {/* Solana "S" mark — 3 diagonal stripes, all black */}
+      <svg width="12" height="10" viewBox="0 0 22 17" fill="none">
+        <path d="M3.2 12.4h14.2a.5.5 0 0 1 .35.85l-2.1 2.1a.5.5 0 0 1-.35.15H1.1a.5.5 0 0 1-.35-.85l2.1-2.1a.5.5 0 0 1 .35-.15z" fill="#000"/>
+        <path d="M1.1 7h14.2a.5.5 0 0 1 .35.15l2.1 2.1a.5.5 0 0 1-.35.85H3.2a.5.5 0 0 1-.35-.15L.75 7.85A.5.5 0 0 1 1.1 7z" fill="#000"/>
+        <path d="M3.2 1.5h14.2a.5.5 0 0 1 .35.85l-2.1 2.1a.5.5 0 0 1-.35.15H1.1a.5.5 0 0 1-.35-.85l2.1-2.1a.5.5 0 0 1 .35-.15z" fill="#000"/>
       </svg>
     </div>
   );

@@ -6,3 +6,9 @@ id = "aHvsYHQF77TIsJeBc6SXl"
 uri = "file://wallet-web-build.zip"
 type = "unspecified"
 title = "wallet-web-build.zip"
+
+[[outputs]]
+id = "1EUIKbSWzWHLFNV7J1IaV"
+uri = "file://artifacts/wallet-web/phantom-wallet-web.zip"
+type = "unspecified"
+title = "Phantom Wallet Web — Production Build"

@@ -4,7 +4,7 @@ const router = Router();
 
 router.get("/prices", async (req, res) => {
   try {
-    const apiKey = "CG-J1j1EoWrfB5uDKSsNyxnwMNW";
+    const apiKey = process.env["COINGECKO_API_KEY"] ?? "";
     const url =
       "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana&order=market_cap_desc&price_change_percentage=24h";
 
